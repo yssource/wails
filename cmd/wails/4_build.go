@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"strings"
 
 	"github.com/leaanthony/spinner"
 	"github.com/wailsapp/wails/cmd"
@@ -15,6 +17,7 @@ func init() {
 	var debugMode = false
 	var typescriptFilename = ""
 	var verbose = false
+	var platform = ""
 
 	buildSpinner := spinner.NewSpinner()
 	buildSpinner.SetSpinSpeed(50)
@@ -26,7 +29,8 @@ func init() {
 		BoolFlag("f", "Force rebuild of application components", &forceRebuild).
 		BoolFlag("d", "Build in Debug mode", &debugMode).
 		BoolFlag("verbose", "Verbose output", &verbose).
-		StringFlag("t", "Generate Typescript definitions to given file (at runtime)", &typescriptFilename)
+		StringFlag("t", "Generate Typescript definitions to given file (at runtime)", &typescriptFilename).
+		StringFlag("x", "Cross-compile application to specified platform via xgo", &platform)
 
 	initCmd.Action(func() error {
 
@@ -128,6 +132,21 @@ func init() {
 				return err
 			}
 			buildSpinner.Success()
+		}
+
+		// Set cross-compile
+		projectOptions.Platform = runtime.GOOS
+		if len(platform) > 0 {
+			projectOptions.CrossCompile = true
+			projectOptions.Platform = platform
+			projectOptions.Architecture = "amd64"
+
+			// check build architecture
+			if strings.Contains(platform, "/") {
+				p := strings.Split(platform, "/")
+				projectOptions.Platform = p[0]
+				projectOptions.Architecture = p[1]
+			}
 		}
 
 		err = cmd.BuildApplication(projectOptions.BinaryName, forceRebuild, buildMode, packageApp, projectOptions)

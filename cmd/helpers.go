@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/leaanthony/mewn"
+	"github.com/leaanthony/mewn/lib"
 	"github.com/leaanthony/slicer"
 	"github.com/leaanthony/spinner"
 )
@@ -56,22 +57,68 @@ func InstallGoDependencies(verbose bool) error {
 	return nil
 }
 
+// EmbedAssets will embed the built frontend assets via mewn.
+func EmbedAssets() ([]string, error) {
+	mewnFiles := lib.GetMewnFiles([]string{}, false)
+
+	referencedAssets, err := lib.GetReferencedAssets(mewnFiles)
+	if err != nil {
+		return []string{}, err
+	}
+
+	targetFiles := []string{}
+
+	for _, referencedAsset := range referencedAssets {
+		packfileData, err := lib.GeneratePackFileString(referencedAsset, false)
+		if err != nil {
+			return []string{}, err
+		}
+		targetFile := filepath.Join(referencedAsset.BaseDir, referencedAsset.PackageName+"-mewn.go")
+		targetFiles = append(targetFiles, targetFile)
+		ioutil.WriteFile(targetFile, []byte(packfileData), 0644)
+	}
+
+	return targetFiles, nil
+}
+
 // BuildApplication will attempt to build the project based on the given inputs
 func BuildApplication(binaryName string, forceRebuild bool, buildMode string, packageApp bool, projectOptions *ProjectOptions) error {
 
+	if buildMode == BuildModeBridge && projectOptions.CrossCompile {
+		return fmt.Errorf("you cant serve the application in cross-compilation")
+	}
+
 	// Generate Windows assets if needed
-	if runtime.GOOS == "windows" {
+	if projectOptions.Platform == "windows" {
 		cleanUp := !packageApp
-		err := NewPackageHelper().PackageWindows(projectOptions, cleanUp)
+		err := NewPackageHelper(projectOptions.Platform).PackageWindows(projectOptions, cleanUp)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Check Mewn is installed
-	err := CheckMewn(projectOptions.Verbose)
-	if err != nil {
-		return err
+	if projectOptions.CrossCompile {
+		// Check build directory
+		buildDirectory := filepath.Join(fs.Cwd(), "build")
+		if !fs.DirExists(buildDirectory) {
+			fs.MkDir(buildDirectory)
+		}
+
+		// Check Docker
+		if err := CheckIfInstalled("docker"); err != nil {
+			return err
+		}
+
+		// Check xgo
+		if err := CheckIfInstalled("xgo"); err != nil {
+			return err
+		}
+	} else {
+		// Check Mewn is installed
+		err := CheckMewn(projectOptions.Verbose)
+		if err != nil {
+			return err
+		}
 	}
 
 	compileMessage := "Packing + Compiling project"
@@ -89,17 +136,38 @@ func BuildApplication(binaryName string, forceRebuild bool, buildMode string, pa
 		println(compileMessage)
 	}
 
+	// embed resources
+	targetFiles, err := EmbedAssets()
+	if err != nil {
+		return err
+	}
+
+	// cleanup temporary embedded assets
+	defer func() {
+		for _, filename := range targetFiles {
+			if err := os.Remove(filename); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}()
+
 	buildCommand := slicer.String()
-	buildCommand.Add("mewn")
+	if projectOptions.CrossCompile {
+		buildCommand.Add("xgo")
+	} else {
+		buildCommand.Add("mewn")
+	}
 
 	if buildMode == BuildModeBridge {
 		// Ignore errors
 		buildCommand.Add("-i")
 	}
 
-	buildCommand.Add("build")
+	if !projectOptions.CrossCompile {
+		buildCommand.Add("build")
+	}
 
-	if binaryName != "" {
+	if binaryName != "" && !projectOptions.CrossCompile {
 		// Alter binary name based on OS
 		switch runtime.GOOS {
 		case "windows":
@@ -115,7 +183,7 @@ func BuildApplication(binaryName string, forceRebuild bool, buildMode string, pa
 	}
 
 	// If we are forcing a rebuild
-	if forceRebuild {
+	if forceRebuild && !projectOptions.CrossCompile {
 		buildCommand.Add("-a")
 	}
 
@@ -126,7 +194,7 @@ func BuildApplication(binaryName string, forceRebuild bool, buildMode string, pa
 	}
 
 	// Add windows flags
-	if runtime.GOOS == "windows" && buildMode == BuildModeProd {
+	if projectOptions.Platform == "windows" && buildMode == BuildModeProd {
 		ldflags += "-H windowsgui "
 	}
 
@@ -143,6 +211,13 @@ func BuildApplication(binaryName string, forceRebuild bool, buildMode string, pa
 	}
 
 	buildCommand.AddSlice([]string{"-ldflags", ldflags})
+
+	if projectOptions.CrossCompile {
+		buildCommand.Add("-targets", projectOptions.Platform+"/"+projectOptions.Architecture)
+		buildCommand.Add("-out", "build/"+binaryName)
+		buildCommand.Add("./")
+	}
+
 	err = NewProgramHelper(projectOptions.Verbose).RunCommandArray(buildCommand.AsSlice())
 	if err != nil {
 		if packSpinner != nil {
@@ -169,7 +244,7 @@ func BuildApplication(binaryName string, forceRebuild bool, buildMode string, pa
 func PackageApplication(projectOptions *ProjectOptions) error {
 	// Package app
 	message := "Generating .app"
-	if runtime.GOOS == "windows" {
+	if projectOptions.Platform == "windows" {
 		err := CheckWindres()
 		if err != nil {
 			return err
@@ -177,12 +252,15 @@ func PackageApplication(projectOptions *ProjectOptions) error {
 		message = "Generating resource bundle"
 	}
 	var packageSpinner *spinner.Spinner
-	if projectOptions.Verbose {
+	if !projectOptions.Verbose {
 		packageSpinner = spinner.New(message)
 		packageSpinner.SetSpinSpeed(50)
 		packageSpinner.Start()
+	} else {
+		println(message)
 	}
-	err := NewPackageHelper().Package(projectOptions)
+
+	err := NewPackageHelper(projectOptions.Platform).Package(projectOptions)
 	if err != nil {
 		if packageSpinner != nil {
 			packageSpinner.Error()
@@ -250,6 +328,15 @@ func CheckWindres() (err error) {
 	programHelper := NewProgramHelper()
 	if !programHelper.IsInstalled("windres") {
 		return fmt.Errorf("windres not installed. It comes by default with mingw. Ensure you have installed mingw correctly")
+	}
+	return nil
+}
+
+// CheckIfInstalled returns if application is installed
+func CheckIfInstalled(application string) (err error) {
+	programHelper := NewProgramHelper()
+	if !programHelper.IsInstalled(application) {
+		return fmt.Errorf("%s not installed. Ensure you have installed %s correctly", application, application)
 	}
 	return nil
 }
