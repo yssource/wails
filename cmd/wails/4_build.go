@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/leaanthony/slicer"
 	"github.com/leaanthony/spinner"
 	"github.com/wailsapp/wails/cmd"
 )
@@ -137,6 +138,7 @@ func init() {
 		// Set cross-compile
 		projectOptions.Platform = runtime.GOOS
 		if len(platform) > 0 {
+
 			projectOptions.CrossCompile = true
 			projectOptions.Platform = platform
 			projectOptions.Architecture = "amd64"
@@ -146,6 +148,13 @@ func init() {
 				p := strings.Split(platform, "/")
 				projectOptions.Platform = p[0]
 				projectOptions.Architecture = p[1]
+			}
+
+			// Check supported platforms
+			supportedPlatforms := slicer.String([]string{"linux/amd64", "linux/386", "windows/amd64", "windows/386", "darwin/amd64"})
+			targetPlatform := projectOptions.Platform + "/" + projectOptions.Architecture
+			if !supportedPlatforms.Contains(targetPlatform) {
+				println("\n*** WARNING: Unsupported target platform", targetPlatform+".", "Supported:", supportedPlatforms.Join(", "))
 			}
 		}
 
