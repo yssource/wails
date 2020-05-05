@@ -1,4 +1,4 @@
-package renderer
+package bridge
 
 import (
 	"encoding/json"
@@ -13,6 +13,10 @@ import (
 )
 
 type messageType int
+
+// ServePort indicates which port to serve the backend on when using
+// `wails serve`
+var ServePort = "34115"
 
 const (
 	jsMessage messageType = iota
@@ -93,7 +97,7 @@ func (h *Bridge) startSession(conn *websocket.Conn) {
 
 // Run the app in Bridge mode!
 func (h *Bridge) Run() error {
-	h.server = &http.Server{Addr: ":34115"}
+	h.server = &http.Server{Addr: ":" + ServePort}
 	http.HandleFunc("/bridge", h.wsBridgeHandler)
 
 	h.log.Info("Bridge mode started.")

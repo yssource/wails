@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/leaanthony/spinner"
 	"github.com/wailsapp/wails/cmd"
@@ -10,6 +11,7 @@ import (
 func init() {
 
 	var forceRebuild = false
+	var servePort = "34115"
 	var verbose = false
 	buildSpinner := spinner.NewSpinner()
 	buildSpinner.SetSpinSpeed(50)
@@ -18,7 +20,8 @@ func init() {
 	initCmd := app.Command("serve", "Run your Wails project in bridge mode").
 		LongDescription(commandDescription).
 		BoolFlag("verbose", "Verbose output", &verbose).
-		BoolFlag("f", "Force rebuild of application components", &forceRebuild)
+		BoolFlag("f", "Force rebuild of application components", &forceRebuild).
+		StringFlag("p", "Port to serve on", &servePort)
 
 	initCmd.Action(func() error {
 
@@ -34,7 +37,6 @@ func init() {
 
 		// Project options
 		projectOptions := &cmd.ProjectOptions{}
-		projectOptions.Verbose = verbose
 
 		// Check we are in project directory
 		// Check project.json loads correctly
@@ -43,6 +45,16 @@ func init() {
 		if err != nil {
 			return err
 		}
+
+		// Set Verbose flag
+		projectOptions.Verbose = verbose
+
+		// Check port
+		port, err := strconv.Atoi(servePort)
+		if err != nil || port <= 0 {
+			return fmt.Errorf("invalid port value: %s", servePort)
+		}
+		projectOptions.ServePort = servePort
 
 		// Save project directory
 		projectDir := fs.Cwd()

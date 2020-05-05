@@ -161,6 +161,7 @@ type ProjectOptions struct {
 	CrossCompile           bool
 	Platform               string
 	Architecture           string
+	ServePort              string
 }
 
 // Defaults sets the default project template

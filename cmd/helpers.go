@@ -510,6 +510,8 @@ func InstallRuntime(caller string, projectDir string, projectOptions *ProjectOpt
 // InstallBridge installs the relevant bridge javascript library
 func InstallBridge(projectDir string, projectOptions *ProjectOptions) error {
 	bridgeFileData := mewn.String("../runtime/assets/bridge.js")
+	// Inject the custom serve port
+	bridgeFileData = strings.ReplaceAll(bridgeFileData, "$SERVEPORT$", projectOptions.ServePort)
 	bridgeFileTarget := filepath.Join(projectDir, projectOptions.FrontEnd.Dir, "node_modules", "@wailsapp", "runtime", "init.js")
 	err := fs.CreateFile(bridgeFileTarget, []byte(bridgeFileData))
 	return err
@@ -561,6 +563,10 @@ func ldFlags(po *ProjectOptions, buildMode string) string {
 
 	ldflags += "-X github.com/wailsapp/wails.BuildMode=" + buildMode
 
+	// Inject port if we are using bridge mode
+	if buildMode == BuildModeBridge {
+		ldflags += " -X github.com/wailsapp/wails/lib/renderer/bridge.ServePort=" + po.ServePort
+	}
 	// If we wish to generate typescript
 	if po.typescriptDefsFilename != "" {
 		cwd, err := os.Getwd()

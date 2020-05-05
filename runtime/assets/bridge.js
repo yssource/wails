@@ -14,7 +14,7 @@ function init() {
 	window.wailsbridge = {
 		reconnectOverlay: null,
 		reconnectTimer: 300,
-		wsURL: 'ws://' + window.location.hostname + ':34115/bridge',
+		wsURL: 'ws://' + window.location.hostname + ':$SERVEPORT$/bridge',
 		connectionState: null,
 		config: {},
 		websocket: null,
@@ -149,38 +149,38 @@ function startBridge() {
 	function handleMessage(message) {
 		// As a bridge we ignore js and css injections
 		switch (message.data[0]) {
-		// Wails library - inject!
-		case 'w':
-			addScript(message.data.slice(1));
+			// Wails library - inject!
+			case 'w':
+				addScript(message.data.slice(1));
 
-			// Now wails runtime is loaded, wails for the ready event
-			// and callback to the main app
-			window.wails.Events.On('wails:loaded', function () {
-				window.wailsbridge.log('Wails Ready');
-				if (window.wailsbridge.callback) {
-					window.wailsbridge.log('Notifying application');
-					window.wailsbridge.callback(window.wails);
-				}
-			});
-			window.wailsbridge.log('Loaded Wails Runtime');
-			break;
+				// Now wails runtime is loaded, wails for the ready event
+				// and callback to the main app
+				window.wails.Events.On('wails:loaded', function () {
+					window.wailsbridge.log('Wails Ready');
+					if (window.wailsbridge.callback) {
+						window.wailsbridge.log('Notifying application');
+						window.wailsbridge.callback(window.wails);
+					}
+				});
+				window.wailsbridge.log('Loaded Wails Runtime');
+				break;
 			// Notifications
-		case 'n':
-			addScript(message.data.slice(1), true);
-			break;
+			case 'n':
+				addScript(message.data.slice(1), true);
+				break;
 			// Binding
-		case 'b':
-			var binding = message.data.slice(1);
-			//log("Binding: " + binding)
-			window.wails._.NewBinding(binding);
-			break;
+			case 'b':
+				var binding = message.data.slice(1);
+				//log("Binding: " + binding)
+				window.wails._.NewBinding(binding);
+				break;
 			// Call back
-		case 'c':
-			var callbackData = message.data.slice(1);
-			window.wails._.Callback(callbackData);
-			break;
-		default:
-			window.wails.Log.Error('Unknown message type received: ' + message.data[0]);
+			case 'c':
+				var callbackData = message.data.slice(1);
+				window.wails._.Callback(callbackData);
+				break;
+			default:
+				window.wails.Log.Error('Unknown message type received: ' + message.data[0]);
 		}
 	}
 
