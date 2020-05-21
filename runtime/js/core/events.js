@@ -108,7 +108,8 @@ export function Notify(eventName, data) {
 				try {
 					parsedData = JSON.parse(data);
 				} catch (e) {
-					Error('Invalid JSON data sent to notify. Event name = ' + eventName);
+					e.message =
+						Error('Invalid JSON data sent to notify [Event name = ' + eventName + '] ' + e.toString());
 				}
 			}
 			// Do the callback
