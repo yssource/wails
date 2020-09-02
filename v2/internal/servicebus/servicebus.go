@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/logger"
 )
 
 // ServiceBus is a messaging bus for Wails applications

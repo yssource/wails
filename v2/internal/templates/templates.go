@@ -10,9 +10,9 @@ import (
 
 	"github.com/leaanthony/gosod"
 	"github.com/leaanthony/slicer"
-	"github.com/leaanthony/wailsv2/v2/internal/fs"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
 	"github.com/olekukonko/tablewriter"
+	"github.com/wailsapp/wails/v2/internal/fs"
+	"github.com/wailsapp/wails/v2/internal/logger"
 )
 
 // Cahce for the templates

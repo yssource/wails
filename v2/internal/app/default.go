@@ -10,7 +10,7 @@ package app
 import (
 	"os"
 
-	"github.com/leaanthony/wailsv2/v2/internal/features"
+	"github.com/wailsapp/wails/v2/internal/features"
 )
 
 // App defines a Wails application structure

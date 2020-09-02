@@ -1,8 +1,8 @@
 package wails
 
 import (
-	"github.com/leaanthony/wailsv2/v2/internal/app"
-	"github.com/leaanthony/wailsv2/v2/internal/runtime/goruntime"
+	"github.com/wailsapp/wails/v2/internal/app"
+	"github.com/wailsapp/wails/v2/internal/runtime/goruntime"
 )
 
 // Runtime is an alias for the goruntime.Runtime struct

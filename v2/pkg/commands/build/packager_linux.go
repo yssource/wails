@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/leaanthony/slicer"
-	"github.com/leaanthony/wailsv2/v2/internal/fs"
-	"github.com/leaanthony/wailsv2/v2/internal/shell"
+	"github.com/wailsapp/wails/v2/internal/fs"
+	"github.com/wailsapp/wails/v2/internal/shell"
 )
 
 func deleteLinuxPackFiles(appDirBase string) {

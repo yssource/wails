@@ -13,7 +13,7 @@ package ffenestri
 
 */
 import "C"
-import "github.com/leaanthony/wailsv2/v2/internal/features"
+import "github.com/wailsapp/wails/v2/internal/features"
 
 func (a *Application) processOSFeatureFlags(features *features.Features) {
 

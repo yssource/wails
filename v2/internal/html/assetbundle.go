@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/leaanthony/slicer"
-	"github.com/leaanthony/wailsv2/v2/internal/assetdb"
+	"github.com/wailsapp/wails/v2/internal/assetdb"
 	"golang.org/x/net/html"
 )
 

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/leaanthony/wailsv2/v2/internal/shell"
+	"github.com/wailsapp/wails/v2/internal/shell"
 )
 
 // PackageManager is a common interface across all package managers

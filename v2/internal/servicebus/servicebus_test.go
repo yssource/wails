@@ -4,8 +4,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
 	"github.com/matryer/is"
+	"github.com/wailsapp/wails/v2/internal/logger"
 )
 
 type Person interface {

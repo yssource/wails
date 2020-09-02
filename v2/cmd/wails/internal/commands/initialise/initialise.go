@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/leaanthony/clir"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/internal/templates"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/templates"
 )
 
 // AddSubcommand adds the `init` command for the Wails application

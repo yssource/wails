@@ -1,6 +1,8 @@
 package goruntime
 
-import "github.com/leaanthony/wailsv2/v2/internal/servicebus"
+import (
+	"github.com/wailsapp/wails/v2/internal/servicebus"
+)
 
 // Window defines all Window related operations
 type Window interface {

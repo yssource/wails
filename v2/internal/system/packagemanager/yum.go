@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/leaanthony/wailsv2/v2/internal/shell"
+	"github.com/wailsapp/wails/v2/internal/shell"
 )
 
 // Yum represents the Yum manager

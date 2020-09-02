@@ -9,8 +9,8 @@ import (
 
 	"github.com/leaanthony/clir"
 	"github.com/leaanthony/slicer"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/pkg/commands/build"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/pkg/commands/build"
 )
 
 // AddBuildSubcommand adds the `build` command for the Wails application

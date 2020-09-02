@@ -6,8 +6,8 @@ import (
 	"runtime"
 
 	"github.com/leaanthony/slicer"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/internal/project"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/project"
 )
 
 // Mode is the type used to indicate the build modes

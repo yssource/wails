@@ -5,10 +5,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/leaanthony/wailsv2/v2/internal/crypto"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/internal/messagedispatcher/message"
-	"github.com/leaanthony/wailsv2/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/internal/crypto"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/messagedispatcher/message"
+	"github.com/wailsapp/wails/v2/internal/servicebus"
 )
 
 // Dispatcher translates messages received from the frontend

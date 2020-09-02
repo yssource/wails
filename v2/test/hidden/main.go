@@ -8,13 +8,11 @@ func main() {
 
 	// Create application with options
 	app := wails.CreateAppWithOptions(&wails.Options{
-		Title:     "minmax",
-		Width:     1024,
-		Height:    768,
-		MinWidth:  800,
-		MinHeight: 600,
-		MaxWidth:  1280,
-		MaxHeight: 1024,
+		Title:       "Hidden Demo",
+		Width:       1024,
+		Height:      768,
+		StartHidden: true,
+		Frameless:   true,
 	})
 
 	app.Bind(newBasic())

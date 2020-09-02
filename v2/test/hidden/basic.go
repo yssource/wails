@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	wails "github.com/wailsapp/wails/v2"
 )
@@ -20,6 +21,10 @@ func newBasic() *Basic {
 func (b *Basic) WailsInit(runtime *wails.Runtime) error {
 	// Perform your setup here
 	b.runtime = runtime
+
+	// Show window after 5 seconds
+	time.AfterFunc(5*time.Second, func() { b.runtime.Window.Show() })
+
 	return nil
 }
 

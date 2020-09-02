@@ -3,8 +3,8 @@ package goruntime
 import (
 	"fmt"
 
-	"github.com/leaanthony/wailsv2/v2/internal/crypto"
-	"github.com/leaanthony/wailsv2/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/internal/crypto"
+	"github.com/wailsapp/wails/v2/internal/servicebus"
 )
 
 // Dialog defines all Dialog related operations

@@ -8,9 +8,9 @@ import (
 	"text/tabwriter"
 
 	"github.com/leaanthony/clir"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/internal/system"
-	"github.com/leaanthony/wailsv2/v2/internal/system/packagemanager"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/system"
+	"github.com/wailsapp/wails/v2/internal/system/packagemanager"
 )
 
 // AddSubcommand adds the `doctor` command for the Wails application

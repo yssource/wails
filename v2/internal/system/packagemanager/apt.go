@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/leaanthony/wailsv2/v2/internal/shell"
+	"github.com/wailsapp/wails/v2/internal/shell"
 )
 
 // Apt represents the Apt manager

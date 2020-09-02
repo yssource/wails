@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/leaanthony/wailsv2/v2/internal/binding"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/internal/messagedispatcher/message"
-	"github.com/leaanthony/wailsv2/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/internal/binding"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/messagedispatcher/message"
+	"github.com/wailsapp/wails/v2/internal/servicebus"
 )
 
 // Call is the Call subsystem. It manages all service bus messages

@@ -4,9 +4,9 @@ import (
 	"os"
 
 	"github.com/leaanthony/clir"
-	"github.com/leaanthony/wailsv2/v2/cmd/wails/internal/commands/build"
-	"github.com/leaanthony/wailsv2/v2/cmd/wails/internal/commands/doctor"
-	"github.com/leaanthony/wailsv2/v2/cmd/wails/internal/commands/initialise"
+	"github.com/wailsapp/wails/v2/cmd/wails/internal/commands/build"
+	"github.com/wailsapp/wails/v2/cmd/wails/internal/commands/doctor"
+	"github.com/wailsapp/wails/v2/cmd/wails/internal/commands/initialise"
 )
 
 func fatal(message string) {

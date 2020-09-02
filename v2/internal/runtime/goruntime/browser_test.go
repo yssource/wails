@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/servicebus"
 )
 
 func TestBrowserOpen(t *testing.T) {

@@ -1,8 +1,8 @@
 package system
 
 import (
-	"github.com/leaanthony/wailsv2/v2/internal/system/operatingsystem"
-	"github.com/leaanthony/wailsv2/v2/internal/system/packagemanager"
+	"github.com/wailsapp/wails/v2/internal/system/operatingsystem"
+	"github.com/wailsapp/wails/v2/internal/system/packagemanager"
 )
 
 // Info holds information about the current operating system,

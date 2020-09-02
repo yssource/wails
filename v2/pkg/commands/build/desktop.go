@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/leaanthony/wailsv2/v2/internal/fs"
-	"github.com/leaanthony/wailsv2/v2/internal/html"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/fs"
+	"github.com/wailsapp/wails/v2/internal/html"
+	"github.com/wailsapp/wails/v2/internal/logger"
 )
 
 // DesktopBuilder builds applications for the desktop

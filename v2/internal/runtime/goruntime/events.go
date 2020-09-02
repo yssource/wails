@@ -1,8 +1,8 @@
 package goruntime
 
 import (
-	"github.com/leaanthony/wailsv2/v2/internal/messagedispatcher/message"
-	"github.com/leaanthony/wailsv2/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/internal/messagedispatcher/message"
+	"github.com/wailsapp/wails/v2/internal/servicebus"
 )
 
 // Events defines all events related operations

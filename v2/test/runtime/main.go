@@ -1,7 +1,7 @@
 package main
 
 import (
-	wails "github.com/leaanthony/wailsv2/v2"
+	wails "github.com/wailsapp/wails/v2"
 )
 
 type Echo struct {

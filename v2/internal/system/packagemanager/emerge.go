@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/leaanthony/wailsv2/v2/internal/shell"
+	"github.com/wailsapp/wails/v2/internal/shell"
 )
 
 // Emerge represents the Emerge package manager

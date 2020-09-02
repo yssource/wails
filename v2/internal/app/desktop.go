@@ -5,14 +5,14 @@ package app
 import (
 	"os"
 
-	"github.com/leaanthony/wailsv2/v2/internal/binding"
-	"github.com/leaanthony/wailsv2/v2/internal/features"
-	"github.com/leaanthony/wailsv2/v2/internal/ffenestri"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/internal/messagedispatcher"
-	"github.com/leaanthony/wailsv2/v2/internal/servicebus"
-	"github.com/leaanthony/wailsv2/v2/internal/signal"
-	"github.com/leaanthony/wailsv2/v2/internal/subsystem"
+	"github.com/wailsapp/wails/v2/internal/binding"
+	"github.com/wailsapp/wails/v2/internal/features"
+	"github.com/wailsapp/wails/v2/internal/ffenestri"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/messagedispatcher"
+	"github.com/wailsapp/wails/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/internal/signal"
+	"github.com/wailsapp/wails/v2/internal/subsystem"
 )
 
 // App defines a Wails application structure

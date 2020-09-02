@@ -67,7 +67,7 @@ func (a *AssetDB) Serialize(name, pkg string) string {
 	header := `// DO NOT EDIT - Generated automatically
 package %s
 
-import "github.com/leaanthony/wailsv2/v2/internal/assetdb"
+import "github.com/wailsapp/wails/v2/internal/assetdb"
 
 var (
 	%s *assetdb.AssetDB = assetdb.NewAssetDB()

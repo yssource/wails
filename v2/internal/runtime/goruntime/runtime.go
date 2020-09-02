@@ -1,6 +1,6 @@
 package goruntime
 
-import "github.com/leaanthony/wailsv2/v2/internal/servicebus"
+import "github.com/wailsapp/wails/v2/internal/servicebus"
 
 // Runtime is a means for the user to interact with the application at runtime
 type Runtime struct {

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	wails "github.com/leaanthony/wailsv2/v2"
+	wails "github.com/wailsapp/wails/v2"
 )
 
 // Calc is a calculator

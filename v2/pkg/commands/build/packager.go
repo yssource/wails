@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/leaanthony/wailsv2/v2/internal/fs"
+	"github.com/wailsapp/wails/v2/internal/fs"
 )
 
 // PackageProject packages the application

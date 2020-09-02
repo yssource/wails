@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 
 	"github.com/leaanthony/clir"
-	"github.com/leaanthony/wailsv2/v2/internal/binding"
-	"github.com/leaanthony/wailsv2/v2/internal/logger"
-	"github.com/leaanthony/wailsv2/v2/internal/messagedispatcher"
-	"github.com/leaanthony/wailsv2/v2/internal/servicebus"
-	"github.com/leaanthony/wailsv2/v2/internal/subsystem"
-	"github.com/leaanthony/wailsv2/v2/internal/webserver"
+	"github.com/wailsapp/wails/v2/internal/binding"
+	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/internal/messagedispatcher"
+	"github.com/wailsapp/wails/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/internal/subsystem"
+	"github.com/wailsapp/wails/v2/internal/webserver"
 )
 
 // App defines a Wails application structure

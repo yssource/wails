@@ -1,7 +1,7 @@
 package build
 
 import (
-	"github.com/leaanthony/wailsv2/v2/internal/project"
+	"github.com/wailsapp/wails/v2/internal/project"
 )
 
 // HybridBuilder builds applications as a server
