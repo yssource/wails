@@ -23,7 +23,20 @@ package webview
 #include <stdint.h>
 #define WEBVIEW_STATIC
 #define WEBVIEW_IMPLEMENTATION
-#include "webview.h"
+
+#ifdef WEBVIEW_GTK
+#include "webview_linux.h"
+#endif
+
+#ifdef WEBVIEW_COCOA
+#include "webview_darwin.h"
+#endif
+
+#ifdef WEBVIEW_COCOA
+#include "webview_darwin.h"
+#endif
+
+
 
 extern void _webviewExternalInvokeCallback(void *, void *);
 
