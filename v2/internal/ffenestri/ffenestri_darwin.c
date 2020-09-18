@@ -334,6 +334,10 @@ void SetSize(struct Application *app, int width, int height) {
         Debug("frame->size.width %4.1f", frame->size.width);
         Debug("frame->size.height %4.1f", frame->size.height);
 
+        frame->size.width = width;
+        frame->size.height = height;
+        msg(app->mainWindow, s("setFrame:display:"), *frame, true);
+
         // Move the window
         // msg(app->mainWindow, s("setFrame:display:animate:"), *frame, 1, 0);
     )
