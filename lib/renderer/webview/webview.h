@@ -2042,6 +2042,14 @@ struct webview_priv
     objc_setAssociatedObject(w->priv.delegate, "webview", (id)(w),
                              OBJC_ASSOCIATION_ASSIGN);
 
+    CGFloat scale = [[NSScreen mainScreen] backingScaleFactor];
+    printf("Scale is: %f\n", scale);
+
+    if( scale != 1.0f ) {
+      w->width = w->width / scale;
+      w->height = w->height / scale;
+    }
+
     NSRect r = NSMakeRect(0, 0, w->width, w->height);
     NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                        NSWindowStyleMaskMiniaturizable;
@@ -2098,6 +2106,7 @@ struct webview_priv
         setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     w->priv.webview.frameLoadDelegate = w->priv.delegate;
     w->priv.webview.UIDelegate = w->priv.delegate;
+    [w->priv.webview.scrollView setZoomScale:1.0/scale animated:NO];
     [[w->priv.window contentView] addSubview:w->priv.webview];
     [w->priv.window orderFrontRegardless];
 
