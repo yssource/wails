@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/wailsapp/wails/v2/internal/logger"
-	"github.com/wailsapp/wails/v2/internal/runtime/goruntime"
+	"github.com/wailsapp/wails/v2/internal/runtime"
 	"github.com/wailsapp/wails/v2/internal/servicebus"
 )
 
@@ -19,7 +19,7 @@ type Runtime struct {
 	logger logger.CustomLogger
 
 	// Runtime library
-	runtime *goruntime.Runtime
+	runtime *runtime.Runtime
 }
 
 // NewRuntime creates a new runtime subsystem
@@ -32,7 +32,7 @@ func NewRuntime(bus *servicebus.ServiceBus, logger *logger.Logger) (*Runtime, er
 	}
 
 	// Subscribe to log messages
-	runtimeChannel, err := bus.Subscribe("runtime")
+	runtimeChannel, err := bus.Subscribe("runtime:")
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func NewRuntime(bus *servicebus.ServiceBus, logger *logger.Logger) (*Runtime, er
 		quitChannel:    quitChannel,
 		runtimeChannel: runtimeChannel,
 		logger:         logger.CustomLogger("Runtime Subsystem"),
-		runtime:        goruntime.New(bus),
+		runtime:        runtime.New(bus),
 	}
 
 	return result, nil
@@ -75,7 +75,7 @@ func (r *Runtime) Start() error {
 				case "browser":
 					err = r.processBrowserMessage(method, runtimeMessage.Data())
 				default:
-					fmt.Errorf("unknown log message: %+v", runtimeMessage)
+					fmt.Errorf("unknown runtime message: %+v", runtimeMessage)
 				}
 
 				// If we had an error, log it
@@ -93,7 +93,7 @@ func (r *Runtime) Start() error {
 }
 
 // GoRuntime returns the Go Runtime object
-func (r *Runtime) GoRuntime() *goruntime.Runtime {
+func (r *Runtime) GoRuntime() *runtime.Runtime {
 	return r.runtime
 }
 
@@ -103,12 +103,12 @@ func (r *Runtime) shutdown() {
 
 func (r *Runtime) processBrowserMessage(method string, data interface{}) error {
 	switch method {
-	case "openurl":
-		url, ok := data.(string)
+	case "open":
+		target, ok := data.(string)
 		if !ok {
-			return fmt.Errorf("expected 1 string parameter for runtime:browser:openurl")
+			return fmt.Errorf("expected 1 string parameter for runtime:browser:open")
 		}
-		go r.runtime.Browser.Open(url)
+		go r.runtime.Browser.Open(target)
 	default:
 		return fmt.Errorf("unknown method runtime:browser:%s", method)
 	}

@@ -6,8 +6,9 @@ import (
 	"runtime"
 
 	"github.com/leaanthony/slicer"
-	"github.com/wailsapp/wails/v2/internal/logger"
 	"github.com/wailsapp/wails/v2/internal/project"
+	"github.com/wailsapp/wails/v2/pkg/clilogger"
+	"github.com/wailsapp/wails/v2/pkg/parser"
 )
 
 // Mode is the type used to indicate the build modes
@@ -24,16 +25,16 @@ var modeMap = []string{"Debug", "Production"}
 
 // Options contains all the build options as well as the project data
 type Options struct {
-	LDFlags        string           // Optional flags to pass to linker
-	Logger         *logger.Logger   // All output to the logger
-	OutputType     string           // EG: desktop, server....
-	Mode           Mode             // release or debug
-	ProjectData    *project.Project // The project data
-	Pack           bool             // Create a package for the app after building
-	Platform       string           // The platform to build for
-	Compiler       string           // The compiler command to use
-	IgnoreFrontend bool             // Indicates if the frontend does not need building
-	OutputFile     string           // Override the output filename
+	LDFlags        string               // Optional flags to pass to linker
+	Logger         *clilogger.CLILogger // All output to the logger
+	OutputType     string               // EG: desktop, server....
+	Mode           Mode                 // release or debug
+	ProjectData    *project.Project     // The project data
+	Pack           bool                 // Create a package for the app after building
+	Platform       string               // The platform to build for
+	Compiler       string               // The compiler command to use
+	IgnoreFrontend bool                 // Indicates if the frontend does not need building
+	OutputFile     string               // Override the output filename
 }
 
 // GetModeAsString returns the current mode as a string
@@ -47,11 +48,6 @@ func Build(options *Options) (string, error) {
 	// Extract logger
 	outputLogger := options.Logger
 
-	// Create a default logger if it doesn't exist
-	if outputLogger == nil {
-		outputLogger = logger.New()
-	}
-
 	// Get working directory
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -59,7 +55,7 @@ func Build(options *Options) (string, error) {
 	}
 
 	// Check platform
-	validPlatforms := slicer.String([]string{"linux"})
+	validPlatforms := slicer.String([]string{"linux", "darwin"})
 	if !validPlatforms.Contains(options.Platform) {
 		return "", fmt.Errorf("platform %s not supported", options.Platform)
 	}
@@ -94,8 +90,15 @@ func Build(options *Options) (string, error) {
 	// Initialise Builder
 	builder.SetProjectData(projectData)
 
+	// Generate Frontend JS Package
+	outputLogger.Println("  - Generating Backend JS Package")
+	// Ignore the parser report coming back
+	_, err = parser.GenerateWailsFrontendPackage()
+	if err != nil {
+		return "", err
+	}
 	if !options.IgnoreFrontend {
-		outputLogger.Writeln("  - Building Wails Frontend")
+		outputLogger.Println("  - Building Wails Frontend")
 		err = builder.BuildFrontend(outputLogger)
 		if err != nil {
 			return "", err
@@ -103,7 +106,7 @@ func Build(options *Options) (string, error) {
 	}
 
 	// Build the base assets
-	outputLogger.Writeln("  - Compiling Assets")
+	outputLogger.Println("  - Compiling Assets")
 	err = builder.BuildRuntime(options)
 	if err != nil {
 		return "", err
@@ -114,16 +117,17 @@ func Build(options *Options) (string, error) {
 	}
 
 	// Compile the application
-	outputLogger.Write("  - Compiling Application in " + GetModeAsString(options.Mode) + " mode...")
+	outputLogger.Print("  - Compiling Application in " + GetModeAsString(options.Mode) + " mode...")
 	err = builder.CompileProject(options)
 	if err != nil {
 		return "", err
 	}
-	outputLogger.Writeln("done.")
+	outputLogger.Println("done.")
+
 	// Do we need to pack the app?
 	if options.Pack {
 
-		outputLogger.Writeln("  - Packaging Application")
+		outputLogger.Println("  - Packaging Application")
 
 		// TODO: Allow cross platform build
 		err = packageProject(options, runtime.GOOS)

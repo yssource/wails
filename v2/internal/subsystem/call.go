@@ -3,10 +3,12 @@ package subsystem
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/internal/binding"
 	"github.com/wailsapp/wails/v2/internal/logger"
 	"github.com/wailsapp/wails/v2/internal/messagedispatcher/message"
+	"github.com/wailsapp/wails/v2/internal/runtime"
 	"github.com/wailsapp/wails/v2/internal/servicebus"
 )
 
@@ -25,10 +27,13 @@ type Call struct {
 
 	// logger
 	logger logger.CustomLogger
+
+	// runtime
+	runtime *runtime.Runtime
 }
 
-// NewCall creates a new log subsystem
-func NewCall(bus *servicebus.ServiceBus, logger *logger.Logger, DB *binding.DB) (*Call, error) {
+// NewCall creates a new call subsystem
+func NewCall(bus *servicebus.ServiceBus, logger *logger.Logger, DB *binding.DB, runtime *runtime.Runtime) (*Call, error) {
 
 	// Register quit channel
 	quitChannel, err := bus.Subscribe("quit")
@@ -48,6 +53,7 @@ func NewCall(bus *servicebus.ServiceBus, logger *logger.Logger, DB *binding.DB) 
 		logger:      logger.CustomLogger("Call Subsystem"),
 		DB:          DB,
 		bus:         bus,
+		runtime:     runtime,
 	}
 
 	return result, nil
@@ -65,7 +71,7 @@ func (c *Call) Start() error {
 			case <-c.quitChannel:
 				c.running = false
 			case callMessage := <-c.callChannel:
-
+				// TODO: Check if this works ok in a goroutine
 				c.processCall(callMessage)
 			}
 		}
@@ -87,6 +93,12 @@ func (c *Call) processCall(callMessage *servicebus.Message) {
 	// Lookup method
 	registeredMethod := c.DB.GetMethod(payload.Name)
 
+	// Check if it's a system call
+	if strings.HasPrefix(payload.Name, ".wails.") {
+		c.processSystemCall(payload, callMessage.Target())
+		return
+	}
+
 	// Check we have it
 	if registeredMethod == nil {
 		c.sendError(fmt.Errorf("Method not registered"), payload, callMessage.Target())
@@ -94,7 +106,12 @@ func (c *Call) processCall(callMessage *servicebus.Message) {
 	}
 	c.logger.Trace("Got registered method: %+v", registeredMethod)
 
-	result, err := registeredMethod.Call(payload.Args)
+	args, err := registeredMethod.ParseArgs(payload.Args)
+	if err != nil {
+		c.sendError(fmt.Errorf("Error parsing arguments: %s", err.Error()), payload, callMessage.Target())
+	}
+
+	result, err := registeredMethod.Call(args)
 	if err != nil {
 		c.sendError(err, payload, callMessage.Target())
 		return
@@ -103,6 +120,16 @@ func (c *Call) processCall(callMessage *servicebus.Message) {
 	// process result
 	c.sendResult(result, payload, callMessage.Target())
 
+}
+
+func (c *Call) processSystemCall(payload *message.CallMessage, clientID string) {
+	c.logger.Trace("Got internal System call: %+v", payload)
+	callName := strings.TrimPrefix(payload.Name, ".wails.")
+	switch callName {
+	case "IsDarkMode":
+		darkModeEnabled := c.runtime.System.IsDarkMode()
+		c.sendResult(darkModeEnabled, payload, clientID)
+	}
 }
 
 func (c *Call) sendResult(result interface{}, payload *message.CallMessage, clientID string) {

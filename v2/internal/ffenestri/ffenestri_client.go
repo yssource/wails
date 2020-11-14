@@ -13,9 +13,9 @@ import "C"
 
 import (
 	"strconv"
-	"unsafe"
 
 	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 // Client is our implentation of messageDispatcher.Client
@@ -114,46 +114,43 @@ func (c *Client) WindowSize(width int, height int) {
 }
 
 // WindowSetColour sets the window colour
-func (c *Client) WindowSetColour(colour string) bool {
-	result := C.SetColour(c.app.app, c.app.string2CString(colour))
-	return result == 1
+func (c *Client) WindowSetColour(colour int) {
+	r, g, b, a := intToColour(colour)
+	C.SetColour(c.app.app, r, g, b, a)
 }
 
-// OpenFileDialog will open a file dialog with the given title
-func (c *Client) OpenFileDialog(title string, filter string) string {
-
-	cstring := C.OpenFileDialog(c.app.app, c.app.string2CString(title), c.app.string2CString(filter))
-	var result string
-	if cstring != nil {
-		result = C.GoString(cstring)
-		// Free the C string that was allocated by the dialog
-		C.free(unsafe.Pointer(cstring))
-	}
-	return result
+// OpenDialog will open a dialog with the given title and filter
+func (c *Client) OpenDialog(dialogOptions *options.OpenDialog, callbackID string) {
+	C.OpenDialog(c.app.app,
+		c.app.string2CString(callbackID),
+		c.app.string2CString(dialogOptions.Title),
+		c.app.string2CString(dialogOptions.Filters),
+		c.app.string2CString(dialogOptions.DefaultFilename),
+		c.app.string2CString(dialogOptions.DefaultDirectory),
+		c.app.bool2Cint(dialogOptions.AllowFiles),
+		c.app.bool2Cint(dialogOptions.AllowDirectories),
+		c.app.bool2Cint(dialogOptions.AllowMultiple),
+		c.app.bool2Cint(dialogOptions.ShowHiddenFiles),
+		c.app.bool2Cint(dialogOptions.CanCreateDirectories),
+		c.app.bool2Cint(dialogOptions.ResolveAliases),
+		c.app.bool2Cint(dialogOptions.TreatPackagesAsDirectories),
+	)
 }
 
-// SaveFileDialog will open a save file dialog with the given title
-func (c *Client) SaveFileDialog(title string, filter string) string {
-
-	cstring := C.SaveFileDialog(c.app.app, c.app.string2CString(title), c.app.string2CString(filter))
-	var result string
-	if cstring != nil {
-		result = C.GoString(cstring)
-		// Free the C string that was allocated by the dialog
-		C.free(unsafe.Pointer(cstring))
-	}
-	return result
+// SaveDialog will open a dialog with the given title and filter
+func (c *Client) SaveDialog(dialogOptions *options.SaveDialog, callbackID string) {
+	C.SaveDialog(c.app.app,
+		c.app.string2CString(callbackID),
+		c.app.string2CString(dialogOptions.Title),
+		c.app.string2CString(dialogOptions.Filters),
+		c.app.string2CString(dialogOptions.DefaultFilename),
+		c.app.string2CString(dialogOptions.DefaultDirectory),
+		c.app.bool2Cint(dialogOptions.ShowHiddenFiles),
+		c.app.bool2Cint(dialogOptions.CanCreateDirectories),
+		c.app.bool2Cint(dialogOptions.TreatPackagesAsDirectories),
+	)
 }
 
-// OpenDirectoryDialog will open a directory dialog with the given title
-func (c *Client) OpenDirectoryDialog(title string, filter string) string {
-
-	cstring := C.OpenDirectoryDialog(c.app.app, c.app.string2CString(title), c.app.string2CString(filter))
-	var result string
-	if cstring != nil {
-		result = C.GoString(cstring)
-		// Free the C string that was allocated by the dialog
-		C.free(unsafe.Pointer(cstring))
-	}
-	return result
+func (c *Client) DarkModeEnabled(callbackID string) {
+	C.DarkModeEnabled(c.app.app, c.app.string2CString(callbackID))
 }

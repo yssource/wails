@@ -12,6 +12,26 @@ The lightweight framework for web-like apps
 
 
 /**
+ * Log the given message with the backend
+ *
+ * @export
+ * @param {string} message
+ */
+function Print(message) {
+	window.wails.Log.Print(message);
+}
+
+/**
+ * Log the given trace message with the backend
+ *
+ * @export
+ * @param {string} message
+ */
+function Trace(message) {
+	window.wails.Log.Trace(message);
+}
+
+/**
  * Log the given debug message with the backend
  *
  * @export
@@ -54,17 +74,40 @@ function Error(message) {
 /**
  * Log the given fatal message with the backend
  *
- * @export
  * @param {string} message
  */
 function Fatal(message) {
 	window.wails.Log.Fatal(message);
 }
 
+
+/**
+ * Sets the Log level to the given log level
+ *
+ * @param {number} loglevel
+ */
+function SetLogLevel(loglevel) {
+	window.wails.Log.SetLogLevel(loglevel);
+}
+
+// Log levels
+const Level = {
+	TRACE: 1,
+	DEBUG: 2,
+	INFO: 3,
+	WARNING: 4,
+	ERROR: 5,
+};
+
+
 module.exports = {
+	Print: Print,
+	Trace: Trace,
 	Debug: Debug,
 	Info: Info,
 	Warning: Warning,
 	Error: Error,
-	Fatal: Fatal
+	Fatal: Fatal,
+	SetLogLevel: SetLogLevel,
+	Level: Level,
 };

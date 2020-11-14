@@ -2,17 +2,17 @@ package initialise
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"strings"
 	"time"
 
 	"github.com/leaanthony/clir"
-	"github.com/wailsapp/wails/v2/internal/logger"
 	"github.com/wailsapp/wails/v2/internal/templates"
+	"github.com/wailsapp/wails/v2/pkg/clilogger"
 )
 
 // AddSubcommand adds the `init` command for the Wails application
-func AddSubcommand(app *clir.Cli) error {
+func AddSubcommand(app *clir.Cli, w io.Writer) error {
 
 	// Load the template shortnames
 	validShortNames, err := templates.TemplateShortNames()
@@ -32,12 +32,16 @@ func AddSubcommand(app *clir.Cli) error {
 	command.StringFlag("n", "Name of project", &projectName)
 
 	// Setup project directory
-	projectDirectory := "."
+	projectDirectory := ""
 	command.StringFlag("d", "Project directory", &projectDirectory)
 
 	// Quiet Init
 	quiet := false
 	command.BoolFlag("q", "Supress output to console", &quiet)
+
+	// VSCode project files
+	vscode := false
+	command.BoolFlag("vscode", "Generate VSCode project files", &vscode)
 
 	// List templates
 	list := false
@@ -46,32 +50,29 @@ func AddSubcommand(app *clir.Cli) error {
 	command.Action(func() error {
 
 		// Create logger
-		logger := logger.New()
-
-		if !quiet {
-			logger.AddOutput(os.Stdout)
-		}
+		logger := clilogger.New(w)
+		logger.Mute(quiet)
 
 		// Are we listing templates?
 		if list {
 			app.PrintBanner()
 			err := templates.OutputList(logger)
-			logger.Writeln("")
+			logger.Println("")
 			return err
 		}
 
 		// Validate output type
 		if !validShortNames.Contains(templateName) {
-			logger.Write(fmt.Sprintf("ERROR: Template '%s' is not valid", templateName))
-			logger.Writeln("")
+			logger.Print(fmt.Sprintf("[ERROR] Template '%s' is not valid", templateName))
+			logger.Println("")
 			command.PrintHelp()
 			return nil
 		}
 
 		// Validate name
 		if len(projectName) == 0 {
-			logger.Writeln("ERROR: Project name required")
-			logger.Writeln("")
+			logger.Println("ERROR: Project name required")
+			logger.Println("")
 			command.PrintHelp()
 			return nil
 		}
@@ -81,15 +82,16 @@ func AddSubcommand(app *clir.Cli) error {
 		}
 
 		task := fmt.Sprintf("Initialising Project %s", strings.Title(projectName))
-		logger.Writeln(task)
-		logger.Writeln(strings.Repeat("-", len(task)))
+		logger.Println(task)
+		logger.Println(strings.Repeat("-", len(task)))
 
 		// Create Template Options
 		options := &templates.Options{
-			ProjectName:  projectName,
-			TargetDir:    projectDirectory,
-			TemplateName: templateName,
-			Logger:       logger,
+			ProjectName:    projectName,
+			TargetDir:      projectDirectory,
+			TemplateName:   templateName,
+			Logger:         logger,
+			GenerateVSCode: vscode,
 		}
 
 		return initProject(options)
@@ -112,9 +114,17 @@ func initProject(options *templates.Options) error {
 
 	// Output stats
 	elapsed := time.Since(start)
-	options.Logger.Writeln("")
-	options.Logger.Writeln(fmt.Sprintf("Initialised project '%s' in %s.", options.ProjectName, elapsed.Round(time.Millisecond).String()))
-	options.Logger.Writeln("")
+	options.Logger.Println("")
+	options.Logger.Println("Project Name:      " + options.ProjectName)
+	options.Logger.Println("Project Directory: " + options.TargetDir)
+	options.Logger.Println("Project Template:  " + options.TemplateName)
+	options.Logger.Println("")
+	if options.GenerateVSCode {
+		options.Logger.Println("VSCode config files generated.")
+	}
+	options.Logger.Println("")
+	options.Logger.Println(fmt.Sprintf("Initialised project '%s' in %s.", options.ProjectName, elapsed.Round(time.Millisecond).String()))
+	options.Logger.Println("")
 
 	return nil
 }

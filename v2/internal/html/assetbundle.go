@@ -153,6 +153,10 @@ func (a *AssetBundle) WriteToCFile(targetDir string) (string, error) {
 	assetVariables := slicer.String()
 	var variableName string
 	for index, asset := range a.assets {
+		// For desktop we ignore the favicon
+		if asset.Type == AssetTypes.FAVICON {
+			continue
+		}
 		variableName = fmt.Sprintf("%s%d", asset.Type, index)
 		assetCdata := fmt.Sprintf("const unsigned char %s[]={ %s0x00 };\n", variableName, asset.AsCHexData())
 		cdata.WriteString(assetCdata)
@@ -160,9 +164,9 @@ func (a *AssetBundle) WriteToCFile(targetDir string) (string, error) {
 	}
 
 	if assetVariables.Length() > 0 {
-		cdata.WriteString(fmt.Sprintf("\nconst char *assets[] = { %s, 0x00 };", assetVariables.Join(", ")))
+		cdata.WriteString(fmt.Sprintf("\nconst unsigned char *assets[] = { %s, 0x00 };", assetVariables.Join(", ")))
 	} else {
-		cdata.WriteString("\nconst char *assets[] = { 0x00 };")
+		cdata.WriteString("\nconst unsigned char *assets[] = { 0x00 };")
 	}
 
 	// Save file
@@ -187,6 +191,7 @@ func (a *AssetBundle) ConvertToAssetDB() (*assetdb.AssetDB, error) {
 	return assetdb, nil
 }
 
+// Dump will output the assets to the terminal
 func (a *AssetBundle) Dump() {
 	println("Assets:")
 	for _, asset := range a.assets {

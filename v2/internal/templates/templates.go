@@ -6,13 +6,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/leaanthony/gosod"
 	"github.com/leaanthony/slicer"
 	"github.com/olekukonko/tablewriter"
 	"github.com/wailsapp/wails/v2/internal/fs"
-	"github.com/wailsapp/wails/v2/internal/logger"
+	"github.com/wailsapp/wails/v2/pkg/clilogger"
 )
 
 // Cahce for the templates
@@ -31,11 +32,14 @@ type Data struct {
 
 // Options for installing a template
 type Options struct {
-	ProjectName  string
-	TemplateName string
-	BinaryName   string
-	TargetDir    string
-	Logger       *logger.Logger
+	ProjectName         string
+	TemplateName        string
+	BinaryName          string
+	TargetDir           string
+	Logger              *clilogger.CLILogger
+	GenerateVSCode      bool
+	PathToDesktopBinary string
+	PathToServerBinary  string
 }
 
 // Template holds data relating to a template
@@ -162,9 +166,24 @@ func Install(options *Options) error {
 	}
 
 	// Did the user want to install in current directory?
-	if options.TargetDir == "." {
-		// Yes - use cwd
-		options.TargetDir = cwd
+	if options.TargetDir == "" {
+
+		// If the current directory is empty, use it
+		isEmpty, err := fs.DirIsEmpty(cwd)
+		if err != nil {
+			return err
+		}
+
+		if isEmpty {
+			// Yes - use cwd
+			options.TargetDir = cwd
+		} else {
+			options.TargetDir = filepath.Join(cwd, options.ProjectName)
+			if fs.DirExists(options.TargetDir) {
+				return fmt.Errorf("cannot create project directory. Dir exists: %s", options.TargetDir)
+			}
+		}
+
 	} else {
 		// Get the absolute path of the given directory
 		targetDir, err := filepath.Abs(filepath.Join(cwd, options.TargetDir))
@@ -213,35 +232,74 @@ func Install(options *Options) error {
 		return err
 	}
 
-	// Calculate the directory name
+	err = generateIDEFiles(options)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // OutputList prints the list of available tempaltes to the given logger
-func OutputList(logger *logger.Logger) error {
+func OutputList(logger *clilogger.CLILogger) error {
 	templates, err := List()
 	if err != nil {
 		return err
 	}
 
-	for _, writer := range logger.Writers() {
-		table := tablewriter.NewWriter(writer)
-		table.SetHeader([]string{"Template", "Short Name", "Description"})
-		table.SetAutoWrapText(false)
-		table.SetAutoFormatHeaders(true)
-		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetCenterSeparator("")
-		table.SetColumnSeparator("")
-		table.SetRowSeparator("")
-		table.SetHeaderLine(false)
-		table.SetBorder(false)
-		table.SetTablePadding("\t") // pad with tabs
-		table.SetNoWhiteSpace(true)
-		for _, template := range templates {
-			table.Append([]string{template.Name, template.ShortName, template.Description})
-		}
-		table.Render()
+	table := tablewriter.NewWriter(logger.Writer)
+	table.SetHeader([]string{"Template", "Short Name", "Description"})
+	table.SetAutoWrapText(false)
+	table.SetAutoFormatHeaders(true)
+	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetCenterSeparator("")
+	table.SetColumnSeparator("")
+	table.SetRowSeparator("")
+	table.SetHeaderLine(false)
+	table.SetBorder(false)
+	table.SetTablePadding("\t") // pad with tabs
+	table.SetNoWhiteSpace(true)
+	for _, template := range templates {
+		table.Append([]string{template.Name, template.ShortName, template.Description})
 	}
+	table.Render()
+	return nil
+}
+
+func generateIDEFiles(options *Options) error {
+
+	if options.GenerateVSCode {
+		return generateVSCodeFiles(options)
+	}
+
+	return nil
+}
+
+func generateVSCodeFiles(options *Options) error {
+
+	targetDir := filepath.Join(options.TargetDir, ".vscode")
+	sourceDir := fs.RelativePath(filepath.Join("./ides/vscode"))
+
+	// Use Gosod to install the template
+	installer, err := gosod.TemplateDir(sourceDir)
+	if err != nil {
+		return err
+	}
+
+	binaryName := filepath.Base(options.TargetDir)
+	if runtime.GOOS == "windows" {
+		// yay windows
+		binaryName += ".exe"
+	}
+
+	options.PathToDesktopBinary = filepath.Join("build", runtime.GOOS, "desktop", binaryName)
+	options.PathToServerBinary = filepath.Join("build", runtime.GOOS, "server", binaryName)
+
+	err = installer.Extract(targetDir, options)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

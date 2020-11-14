@@ -10,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/internal/logger"
 	"github.com/wailsapp/wails/v2/internal/messagedispatcher/message"
 	"github.com/wailsapp/wails/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 // Dispatcher translates messages received from the frontend
@@ -20,6 +21,7 @@ type Dispatcher struct {
 	eventChannel  <-chan *servicebus.Message
 	windowChannel <-chan *servicebus.Message
 	dialogChannel <-chan *servicebus.Message
+	systemChannel <-chan *servicebus.Message
 	running       bool
 
 	servicebus *servicebus.ServiceBus
@@ -62,6 +64,11 @@ func New(servicebus *servicebus.ServiceBus, logger *logger.Logger) (*Dispatcher,
 		return nil, err
 	}
 
+	systemChannel, err := servicebus.Subscribe("system:")
+	if err != nil {
+		return nil, err
+	}
+
 	result := &Dispatcher{
 		servicebus:    servicebus,
 		eventChannel:  eventChannel,
@@ -71,6 +78,7 @@ func New(servicebus *servicebus.ServiceBus, logger *logger.Logger) (*Dispatcher,
 		quitChannel:   quitChannel,
 		windowChannel: windowChannel,
 		dialogChannel: dialogChannel,
+		systemChannel: systemChannel,
 	}
 
 	return result, nil
@@ -98,6 +106,8 @@ func (d *Dispatcher) Start() error {
 				d.processWindowMessage(windowMessage)
 			case dialogMessage := <-d.dialogChannel:
 				d.processDialogMessage(dialogMessage)
+			case systemMessage := <-d.systemChannel:
+				d.processSystemMessage(systemMessage)
 			}
 		}
 
@@ -173,6 +183,28 @@ func (d *Dispatcher) processCallResult(result *servicebus.Message) {
 	client.frontend.CallResult(result.Data().(string))
 }
 
+// processSystem
+func (d *Dispatcher) processSystemMessage(result *servicebus.Message) {
+
+	d.logger.Trace("Got system in message dispatcher: %+v", result)
+
+	splitTopic := strings.Split(result.Topic(), ":")
+	command := splitTopic[1]
+	callbackID := splitTopic[2]
+	switch command {
+	case "isdarkmode":
+		d.lock.RLock()
+		for _, client := range d.clients {
+			client.frontend.DarkModeEnabled(callbackID)
+			break
+		}
+		d.lock.RUnlock()
+
+	default:
+		d.logger.Error("Unknown system command: %s", command)
+	}
+}
+
 // processEvent will
 func (d *Dispatcher) processEvent(result *servicebus.Message) {
 
@@ -231,7 +263,7 @@ func (d *Dispatcher) processWindowMessage(result *servicebus.Message) {
 			client.frontend.WindowUnFullscreen()
 		}
 	case "setcolour":
-		colour, ok := result.Data().(string)
+		colour, ok := result.Data().(int)
 		if !ok {
 			d.logger.Error("Invalid colour for 'window:setcolour' : %#v", result.Data())
 			return
@@ -317,7 +349,6 @@ func (d *Dispatcher) processWindowMessage(result *servicebus.Message) {
 // processDialogMessage processes dialog messages
 func (d *Dispatcher) processDialogMessage(result *servicebus.Message) {
 	splitTopic := strings.Split(result.Topic(), ":")
-
 	if len(splitTopic) < 4 {
 		d.logger.Error("Invalid dialog message : %#v", result.Data())
 		return
@@ -327,65 +358,42 @@ func (d *Dispatcher) processDialogMessage(result *servicebus.Message) {
 	switch command {
 	case "select":
 		dialogType := splitTopic[2]
-		title := splitTopic[3]
-		filter := ""
-		if len(splitTopic) > 4 {
-			filter = splitTopic[4]
-		}
 		switch dialogType {
-		case "file":
-			responseTopic, ok := result.Data().(string)
+		case "open":
+			dialogOptions, ok := result.Data().(*options.OpenDialog)
 			if !ok {
-				d.logger.Error("Invalid responseTopic for 'dialog:select:file' : %#v", result.Data())
+				d.logger.Error("Invalid data for 'dialog:select:open' : %#v", result.Data())
 				return
 			}
-			d.logger.Info("Opening File dialog! responseTopic = %s", responseTopic)
+			// This is hardcoded in the sender too
+			callbackID := splitTopic[3]
 
 			// TODO: Work out what we mean in a multi window environment...
 			// For now we will just pick the first one
-			var result string
 			for _, client := range d.clients {
-				result = client.frontend.OpenFileDialog(title, filter)
+				client.frontend.OpenDialog(dialogOptions, callbackID)
 			}
-
-			// Send dummy response
-			d.servicebus.Publish(responseTopic, result)
-		case "filesave":
-			responseTopic, ok := result.Data().(string)
+		case "save":
+			dialogOptions, ok := result.Data().(*options.SaveDialog)
 			if !ok {
-				d.logger.Error("Invalid responseTopic for 'dialog:select:filesave' : %#v", result.Data())
+				d.logger.Error("Invalid data for 'dialog:select:save' : %#v", result.Data())
 				return
 			}
-			d.logger.Info("Opening Save File dialog! responseTopic = %s", responseTopic)
+			// This is hardcoded in the sender too
+			callbackID := splitTopic[3]
 
 			// TODO: Work out what we mean in a multi window environment...
 			// For now we will just pick the first one
-			var result string
 			for _, client := range d.clients {
-				result = client.frontend.SaveFileDialog(title, filter)
+				client.frontend.SaveDialog(dialogOptions, callbackID)
 			}
-
-			// Send dummy response
-			d.servicebus.Publish(responseTopic, result)
-		case "directory":
-			responseTopic, ok := result.Data().(string)
-			if !ok {
-				d.logger.Error("Invalid responseTopic for 'dialog:select:directory' : %#v", result.Data())
-				return
-			}
-			d.logger.Info("Opening Directory dialog! responseTopic = %s", responseTopic)
-
-			// TODO: Work out what we mean in a multi window environment...
-			// For now we will just pick the first one
-			var result string
-			for _, client := range d.clients {
-				result = client.frontend.OpenDirectoryDialog(title, filter)
-			}
-			// Send dummy response
-			d.servicebus.Publish(responseTopic, result)
 
 		default:
-			d.logger.Error("Unknown dialog command: %s", command)
+			d.logger.Error("Unknown dialog type: %s", dialogType)
 		}
+
+	default:
+		d.logger.Error("Unknown dialog command: %s", command)
 	}
+
 }

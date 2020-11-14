@@ -26,6 +26,26 @@ function sendLogMessage(level, message) {
 }
 
 /**
+ * Log the given trace message with the backend
+ *
+ * @export
+ * @param {string} message
+ */
+export function Trace(message) {
+	sendLogMessage('T', message);
+}
+
+/**
+ * Log the given message with the backend
+ *
+ * @export
+ * @param {string} message
+ */
+export function Print(message) {
+	sendLogMessage('P', message);
+}
+
+/**
  * Log the given debug message with the backend
  *
  * @export
@@ -74,3 +94,22 @@ export function Error(message) {
 export function Fatal(message) {
 	sendLogMessage('F', message);
 }
+
+/**
+ * Sets the Log level to the given log level
+ *
+ * @export
+ * @param {number} loglevel
+ */
+export function SetLogLevel(loglevel) {
+	sendLogMessage('S', loglevel);
+}
+
+// Log levels
+export const Level = {
+	TRACE: 1,
+	DEBUG: 2,
+	INFO: 3,
+	WARNING: 4,
+	ERROR: 5,
+};

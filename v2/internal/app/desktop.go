@@ -3,16 +3,15 @@
 package app
 
 import (
-	"os"
-
 	"github.com/wailsapp/wails/v2/internal/binding"
-	"github.com/wailsapp/wails/v2/internal/features"
 	"github.com/wailsapp/wails/v2/internal/ffenestri"
 	"github.com/wailsapp/wails/v2/internal/logger"
 	"github.com/wailsapp/wails/v2/internal/messagedispatcher"
 	"github.com/wailsapp/wails/v2/internal/servicebus"
 	"github.com/wailsapp/wails/v2/internal/signal"
 	"github.com/wailsapp/wails/v2/internal/subsystem"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/internal/runtime"
 )
 
 // App defines a Wails application structure
@@ -21,6 +20,7 @@ type App struct {
 	servicebus *servicebus.ServiceBus
 	logger     *logger.Logger
 	signal     *signal.Manager
+	options    *options.App
 
 	// Subsystems
 	log        *subsystem.Log
@@ -36,45 +36,30 @@ type App struct {
 	// This is our binding DB
 	bindings *binding.Bindings
 
-	// Feature flags
-	Features *features.Features
+	// LogLevel Store
+	loglevelStore *runtime.Store
 }
 
 // Create App
-func CreateApp(options *Options) *App {
+func CreateApp(options *options.App) *App {
 
 	// Merge default options
-	options.mergeDefaults()
+	options.MergeDefaults()
 
 	// Set up logger
-	myLogger := logger.New(os.Stdout)
-	myLogger.SetLogLevel(logger.TRACE)
+	myLogger := logger.New(options.Logger)
+	myLogger.SetLogLevel(options.LogLevel)
 
-	window := ffenestri.NewApplicationWithConfig(&ffenestri.Config{
-		Title:       options.Title,
-		Width:       options.Width,
-		Height:      options.Height,
-		MinWidth:    options.MinWidth,
-		MinHeight:   options.MinHeight,
-		MaxWidth:    options.MaxWidth,
-		MaxHeight:   options.MaxHeight,
-		Frameless:   options.Frameless,
-		StartHidden: options.StartHidden,
-
-		// This should be controlled by the compile time flags...
-		DevTools: true,
-
-		Resizable:  !options.DisableResize,
-		Fullscreen: options.Fullscreen,
-	}, myLogger)
+	window := ffenestri.NewApplicationWithConfig(options, myLogger)
 
 	result := &App{
 		window:     window,
 		servicebus: servicebus.New(myLogger),
 		logger:     myLogger,
 		bindings:   binding.NewBindings(myLogger),
-		Features:   features.New(),
 	}
+
+	result.options = options
 
 	// Initialise the app
 	result.Init()
@@ -106,6 +91,9 @@ func (a *App) Run() error {
 	a.runtime = runtime
 	a.runtime.Start()
 
+	// Application Stores
+	a.loglevelStore = a.runtime.GoRuntime().Store.New("loglevel", a.options.LogLevel)
+
 	// Start the binding subsystem
 	binding, err := subsystem.NewBinding(a.servicebus, a.logger, a.bindings, a.runtime.GoRuntime())
 	if err != nil {
@@ -115,7 +103,7 @@ func (a *App) Run() error {
 	a.binding.Start()
 
 	// Start the logging subsystem
-	log, err := subsystem.NewLog(a.servicebus, a.logger)
+	log, err := subsystem.NewLog(a.servicebus, a.logger, a.loglevelStore)
 	if err != nil {
 		return err
 	}
@@ -139,7 +127,7 @@ func (a *App) Run() error {
 	a.event.Start()
 
 	// Start the call subsystem
-	call, err := subsystem.NewCall(a.servicebus, a.logger, a.bindings.DB())
+	call, err := subsystem.NewCall(a.servicebus, a.logger, a.bindings.DB(), a.runtime.GoRuntime())
 	if err != nil {
 		return err
 	}
@@ -152,7 +140,7 @@ func (a *App) Run() error {
 		return err
 	}
 
-	result := a.window.Run(dispatcher, bindingDump, a.Features)
+	result := a.window.Run(dispatcher, bindingDump)
 	a.logger.Trace("Ffenestri.Run() exited")
 	a.servicebus.Stop()
 

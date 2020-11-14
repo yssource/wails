@@ -82,6 +82,38 @@ export function Once(eventName, callback) {
 	OnMultiple(eventName, callback, 1);
 }
 
+function notifyListeners(eventData) {
+
+	// Get the event name
+	var eventName = eventData.name;
+
+	// Check if we have any listeners for this event
+	if (eventListeners[eventName]) {
+
+		// Keep a list of listener indexes to destroy
+		const newEventListenerList = eventListeners[eventName].slice();
+
+		// Iterate listeners
+		for (let count = 0; count < eventListeners[eventName].length; count += 1) {
+
+			// Get next listener
+			const listener = eventListeners[eventName][count];
+
+			var data = eventData.data;
+
+			// Do the callback
+			const destroy = listener.Callback(data);
+			if (destroy) {
+				// if the listener indicated to destroy itself, add it to the destroy list
+				newEventListenerList.splice(count, 1);
+			}
+		}
+
+		// Update callbacks with new list of listners
+		eventListeners[eventName] = newEventListenerList;
+	}
+}
+
 /**
  * Notify informs frontend listeners that an event was emitted with the given data
  *
@@ -100,33 +132,7 @@ export function Notify(notifyMessage) {
 		throw new Error(error);
 	}
 
-	var eventName = message.name;
-
-	// Check if we have any listeners for this event
-	if (eventListeners[eventName]) {
-
-		// Keep a list of listener indexes to destroy
-		const newEventListenerList = eventListeners[eventName].slice();
-
-		// Iterate listeners
-		for (let count = 0; count < eventListeners[eventName].length; count += 1) {
-
-			// Get next listener
-			const listener = eventListeners[eventName][count];
-
-			var data = message.data;
-
-			// Do the callback
-			const destroy = listener.Callback(data);
-			if (destroy) {
-				// if the listener indicated to destroy itself, add it to the destroy list
-				newEventListenerList.splice(count, 1);
-			}
-		}
-
-		// Update callbacks with new list of listners
-		eventListeners[eventName] = newEventListenerList;
-	}
+	notifyListeners(message);
 }
 
 /**
@@ -137,66 +143,15 @@ export function Notify(notifyMessage) {
  */
 export function Emit(eventName) {
 
-	// Calculate the data
-	if (arguments.length > 1) {
-		// Notify backend
-		const payload = {
-			name: eventName,
-			data: [].slice.apply(arguments).slice(1),
-		};
-		SendMessage('Ej' + JSON.stringify(payload));
-	} else {
-		SendMessage('ej' + eventName);
-	}
+	const payload = {
+		name: eventName,
+		data: [].slice.apply(arguments).slice(1),
+	};
 
-}
+	// Notify JS listeners
+	notifyListeners(payload);
 
-// Callbacks for the heartbeat calls
-const heartbeatCallbacks = {};
+	// Notify Go listeners
+	SendMessage('Ej' + JSON.stringify(payload));
 
-/**
- * Heartbeat emits the event `eventName`, every `timeInMilliseconds` milliseconds until
- * the event is acknowledged via `Event.Acknowledge`. Once this happens, `callback` is invoked ONCE
- *
- * @export
- * @param {string} eventName
- * @param {number} timeInMilliseconds
- * @param {function} callback
- */
-export function Heartbeat(eventName, timeInMilliseconds, callback) {
-
-	// Declare interval variable
-	let interval = null;
-
-	// Setup callback
-	function dynamicCallback() {
-		// Kill interval
-		clearInterval(interval);
-		// Callback
-		callback();
-	}
-
-	// Register callback
-	heartbeatCallbacks[eventName] = dynamicCallback;
-
-	// Start emitting the event
-	interval = setInterval(function () {
-		Emit(eventName);
-	}, timeInMilliseconds);
-}
-
-/**
- * Acknowledges a heartbeat event by name
- *
- * @export
- * @param {string} eventName
- */
-export function Acknowledge(eventName) {
-	// If we are waiting for acknowledgement for this event type
-	if (heartbeatCallbacks[eventName]) {
-		// Acknowledge!
-		heartbeatCallbacks[eventName]();
-	} else {
-		throw new Error(`Cannot acknowledge unknown heartbeat '${eventName}'`);
-	}
 }

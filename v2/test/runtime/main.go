@@ -2,6 +2,8 @@ package main
 
 import (
 	wails "github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 )
 
 type Echo struct {
@@ -14,12 +16,21 @@ func (e *Echo) Echo(message string) string {
 func main() {
 
 	// Create application with options
-	app := wails.CreateAppWithOptions(&wails.Options{
+	app := wails.CreateAppWithOptions(&options.App{
 		Title:         "Runtime Tester!",
 		Width:         850,
 		Height:        620,
 		DisableResize: false,
 		Fullscreen:    false,
+		RGBA:          0xFFFFFF00,
+		Mac: &mac.Options{
+			// TitleBar: mac.TitleBarHidden(),
+			// TitleBar: mac.TitleBarHiddenInset(),
+			TitleBar: mac.TitleBarDefault(),
+			// Appearance:                    mac.NSAppearanceNameVibrantLight,
+			WebviewIsTransparent:          true,
+			WindowBackgroundIsTranslucent: true,
+		},
 	})
 
 	// You can also use the simplified call:

@@ -10,7 +10,7 @@ package app
 import (
 	"os"
 
-	"github.com/wailsapp/wails/v2/internal/features"
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 // App defines a Wails application structure
@@ -22,12 +22,10 @@ type App struct {
 
 	// Indicates if the app is running in debug mode
 	debug bool
-
-	Features *features.Features
 }
 
 // CreateApp returns a null application
-func CreateApp(options *Options) *App {
+func CreateApp(options *options.App) *App {
 	return &App{}
 }
 

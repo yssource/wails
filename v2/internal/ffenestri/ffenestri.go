@@ -5,15 +5,18 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/wailsapp/wails/v2/internal/features"
 	"github.com/wailsapp/wails/v2/internal/logger"
 	"github.com/wailsapp/wails/v2/internal/messagedispatcher"
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 /*
 
 #cgo linux CFLAGS: -DFFENESTRI_LINUX=1
 #cgo linux pkg-config: gtk+-3.0 webkit2gtk-4.0
+
+#cgo darwin CFLAGS: -DFFENESTRI_DARWIN=1
+#cgo darwin LDFLAGS: -framework WebKit -lobjc
 
 #include <stdlib.h>
 #include "ffenestri.h"
@@ -26,36 +29,9 @@ import "C"
 // TODO: move to compile time.
 var DEBUG bool = true
 
-// Config defines how our application should be configured
-type Config struct {
-	Title       string
-	Width       int
-	Height      int
-	MinWidth    int
-	MinHeight   int
-	MaxWidth    int
-	MaxHeight   int
-	DevTools    bool
-	Resizable   bool
-	Fullscreen  bool
-	Frameless   bool
-	StartHidden bool
-}
-
-var defaultConfig = &Config{
-	Title:       "My Wails App",
-	Width:       800,
-	Height:      600,
-	DevTools:    true,
-	Resizable:   true,
-	Fullscreen:  false,
-	Frameless:   false,
-	StartHidden: false,
-}
-
 // Application is our main application object
 type Application struct {
-	config *Config
+	config *options.App
 	memory []unsafe.Pointer
 
 	// This is the main app pointer
@@ -80,7 +56,7 @@ func init() {
 }
 
 // NewApplicationWithConfig creates a new application based on the given config
-func NewApplicationWithConfig(config *Config, logger *logger.Logger) *Application {
+func NewApplicationWithConfig(config *options.App, logger *logger.Logger) *Application {
 	return &Application{
 		config: config,
 		logger: logger.CustomLogger("Ffenestri"),
@@ -90,7 +66,7 @@ func NewApplicationWithConfig(config *Config, logger *logger.Logger) *Applicatio
 // NewApplication creates a new Application with the default config
 func NewApplication(logger *logger.Logger) *Application {
 	return &Application{
-		config: defaultConfig,
+		config: options.Default,
 		logger: logger.CustomLogger("Ffenestri"),
 	}
 }
@@ -123,16 +99,25 @@ type DispatchClient interface {
 	SendMessage(string)
 }
 
+func intToColour(colour int) (C.int, C.int, C.int, C.int) {
+	var alpha = C.int(colour & 0xFF)
+	var blue = C.int((colour >> 8) & 0xFF)
+	var green = C.int((colour >> 16) & 0xFF)
+	var red = C.int((colour >> 24) & 0xFF)
+	return red, green, blue, alpha
+}
+
 // Run the application
-func (a *Application) Run(incomingDispatcher Dispatcher, bindings string, features *features.Features) error {
+func (a *Application) Run(incomingDispatcher Dispatcher, bindings string) error {
 	title := a.string2CString(a.config.Title)
 	width := C.int(a.config.Width)
 	height := C.int(a.config.Height)
-	resizable := a.bool2Cint(a.config.Resizable)
+	resizable := a.bool2Cint(!a.config.DisableResize)
 	devtools := a.bool2Cint(a.config.DevTools)
 	fullscreen := a.bool2Cint(a.config.Fullscreen)
 	startHidden := a.bool2Cint(a.config.StartHidden)
-	app := C.NewApplication(title, width, height, resizable, devtools, fullscreen, startHidden)
+	logLevel := C.int(a.config.LogLevel)
+	app := C.NewApplication(title, width, height, resizable, devtools, fullscreen, startHidden, logLevel)
 
 	// Save app reference
 	a.app = unsafe.Pointer(app)
@@ -150,9 +135,14 @@ func (a *Application) Run(incomingDispatcher Dispatcher, bindings string, featur
 	// Set debug if needed
 	C.SetDebug(app, a.bool2Cint(DEBUG))
 
-	// Set Frameless
-	if a.config.Frameless {
-		C.DisableFrame(a.app)
+	// TODO: Move frameless to Linux options
+	// if a.config.Frameless {
+	// 	C.DisableFrame(a.app)
+	// }
+
+	if a.config.RGBA != 0 {
+		r, g, b, alpha := intToColour(a.config.RGBA)
+		C.SetColour(a.app, r, g, b, alpha)
 	}
 
 	// Escape bindings so C doesn't freak out
@@ -161,12 +151,12 @@ func (a *Application) Run(incomingDispatcher Dispatcher, bindings string, featur
 	// Set bindings
 	C.SetBindings(app, a.string2CString(bindings))
 
-	// Process feature flags
-	a.processFeatureFlags(features)
-
 	// save the dispatcher in a package variable so that the C callbacks
 	// can access it
 	dispatcher = incomingDispatcher.RegisterClient(newClient(a))
+
+	// Process platform settings
+	a.processPlatformSettings()
 
 	// Check we could initialise the application
 	if app != nil {
@@ -188,12 +178,4 @@ func (a *Application) Run(incomingDispatcher Dispatcher, bindings string, featur
 //export messageFromWindowCallback
 func messageFromWindowCallback(data *C.char) {
 	dispatcher.DispatchMessage(C.GoString(data))
-}
-
-func (a *Application) processFeatureFlags(features *features.Features) {
-
-	// Process generic features
-
-	// Process OS Specific flags
-	a.processOSFeatureFlags(features)
 }

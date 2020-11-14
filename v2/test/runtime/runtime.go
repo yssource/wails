@@ -4,6 +4,7 @@ import (
 	"time"
 
 	wails "github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 // RuntimeTest to test the runtimes
@@ -22,6 +23,12 @@ func (r *RuntimeTest) WailsInit(runtime *wails.Runtime) error {
 	r.runtime.Events.On("testevent", func(optionalParams ...interface{}) {
 		println("Wooohoooo! I got called!")
 	})
+	r.runtime.Events.Once("testeventonce", func(optionalParams ...interface{}) {
+		println("I only get called once!")
+	})
+	r.runtime.Events.OnMultiple("testeventmultiple", func(optionalParams ...interface{}) {
+		println("I only get called 3 times!")
+	}, 3)
 	return nil
 }
 
@@ -51,29 +58,100 @@ func (r *RuntimeTest) Fullscreen() {
 	r.runtime.Window.Fullscreen()
 }
 
+// SetTitle will call the SetTitle method
+func (r *RuntimeTest) SetTitle(title string) {
+	r.runtime.Window.SetTitle(title)
+}
+
 // UnFullscreen will call the Runtime.UnFullscreen method
 func (r *RuntimeTest) UnFullscreen() {
 	r.runtime.Window.UnFullscreen()
 }
 
 // SetColour will call the Runtime.UnFullscreen method
-func (r *RuntimeTest) SetColour(colour string) {
+func (r *RuntimeTest) SetColour(colour int) {
 	r.runtime.Window.SetColour(colour)
 }
 
-// SelectFile will call the Runtime.Dialog.OpenFile method
-func (r *RuntimeTest) SelectFile(title string, filter string) string {
-	return r.runtime.Dialog.SelectFile(title, filter)
+// OpenFileDialog will call the Runtime.Dialog.OpenDialog method requesting File selection
+func (r *RuntimeTest) OpenFileDialog(title string, filter string) []string {
+	dialogOptions := &options.OpenDialog{
+		Title:      title,
+		Filters:    filter,
+		AllowFiles: true,
+	}
+	return r.runtime.Dialog.Open(dialogOptions)
 }
 
-// SaveFile will call the Runtime.Dialog.SaveFile method
-func (r *RuntimeTest) SaveFile(title string, filter string) string {
-	return r.runtime.Dialog.SaveFile(title, filter)
+// OpenDirectoryDialog will call the Runtime.Dialog.OpenDialog method requesting File selection
+func (r *RuntimeTest) OpenDirectoryDialog(title string, filter string) []string {
+	dialogOptions := &options.OpenDialog{
+		Title:            title,
+		Filters:          filter,
+		AllowDirectories: true,
+	}
+	return r.runtime.Dialog.Open(dialogOptions)
 }
 
-// SelectDirectory will call the Runtime.Dialog.OpenDirectory method
-func (r *RuntimeTest) SelectDirectory(title string, filter string) string {
-	return r.runtime.Dialog.SelectDirectory(title, filter)
+// OpenDialog will call the Runtime.Dialog.OpenDialog method requesting both Files and Directories
+func (r *RuntimeTest) OpenDialog(title string, filter string) []string {
+	dialogOptions := &options.OpenDialog{
+		Title:            title,
+		Filters:          filter,
+		AllowDirectories: true,
+		AllowFiles:       true,
+	}
+	return r.runtime.Dialog.Open(dialogOptions)
+}
+
+// OpenDialogMultiple will call the Runtime.Dialog.OpenDialog method allowing multiple selection
+func (r *RuntimeTest) OpenDialogMultiple(title string, filter string) []string {
+	dialogOptions := &options.OpenDialog{
+		Title:            title,
+		Filters:          filter,
+		AllowDirectories: true,
+		AllowFiles:       true,
+		AllowMultiple:    true,
+	}
+	return r.runtime.Dialog.Open(dialogOptions)
+}
+
+// OpenDialogAllOptions will call the Runtime.Dialog.OpenDialog method allowing multiple selection
+func (r *RuntimeTest) OpenDialogAllOptions(filter string, defaultDir string, defaultFilename string) []string {
+	dialogOptions := &options.OpenDialog{
+		DefaultDirectory:           defaultDir,
+		DefaultFilename:            defaultFilename,
+		Filters:                    filter,
+		AllowFiles:                 true,
+		AllowDirectories:           true,
+		ShowHiddenFiles:            true,
+		CanCreateDirectories:       true,
+		TreatPackagesAsDirectories: true,
+		ResolveAliases:             true,
+	}
+	return r.runtime.Dialog.Open(dialogOptions)
+}
+
+// SaveFileDialog will call the Runtime.Dialog.SaveDialog method requesting a File selection
+func (r *RuntimeTest) SaveFileDialog(title string, filter string) string {
+	dialogOptions := &options.SaveDialog{
+		Title:   title,
+		Filters: filter,
+	}
+	return r.runtime.Dialog.Save(dialogOptions)
+}
+
+// SaveDialogAllOptions will call the Runtime.Dialog.SaveDialog method allowing multiple selection
+func (r *RuntimeTest) SaveDialogAllOptions(filter string, defaultDir string, defaultFilename string) string {
+	dialogOptions := &options.SaveDialog{
+		DefaultDirectory:           defaultDir,
+		DefaultFilename:            defaultFilename,
+		Filters:                    filter,
+		ShowHiddenFiles:            true,
+		CanCreateDirectories:       true,
+		TreatPackagesAsDirectories: true,
+	}
+	return r.runtime.Dialog.Save(dialogOptions)
 }
 
 // HideWindow will call the Runtime.Window.Hide method and then call
@@ -101,4 +179,9 @@ func (r *RuntimeTest) Minimise() {
 // Unminimise the Window
 func (r *RuntimeTest) Unminimise() {
 	r.runtime.Window.Unminimise()
+}
+
+// Check is system is running in dark mode
+func (r *RuntimeTest) IsDarkMode() bool {
+	return r.runtime.System.IsDarkMode()
 }

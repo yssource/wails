@@ -6,6 +6,7 @@ import (
 	"github.com/wailsapp/wails/v2/internal/logger"
 	"github.com/wailsapp/wails/v2/internal/messagedispatcher/message"
 	"github.com/wailsapp/wails/v2/internal/servicebus"
+	"github.com/wailsapp/wails/v2/pkg/options"
 )
 
 // Client defines what a frontend client can do
@@ -13,9 +14,8 @@ type Client interface {
 	Quit()
 	NotifyEvent(message string)
 	CallResult(message string)
-	SaveFileDialog(title string, filter string) string
-	OpenFileDialog(title string, filter string) string
-	OpenDirectoryDialog(title string, filter string) string
+	OpenDialog(dialogOptions *options.OpenDialog, callbackID string)
+	SaveDialog(dialogOptions *options.SaveDialog, callbackID string)
 	WindowSetTitle(title string)
 	WindowShow()
 	WindowHide()
@@ -28,7 +28,8 @@ type Client interface {
 	WindowSize(width int, height int)
 	WindowFullscreen()
 	WindowUnFullscreen()
-	WindowSetColour(colour string) bool
+	WindowSetColour(colour int)
+	DarkModeEnabled(callbackID string)
 }
 
 // DispatchClient is what the frontends use to interface with the
@@ -63,7 +64,7 @@ func (d *DispatchClient) DispatchMessage(incomingMessage string) {
 	d.logger.Trace(fmt.Sprintf("Received message: %+v", incomingMessage))
 	parsedMessage, err := message.Parse(incomingMessage)
 	if err != nil {
-		d.logger.Trace("Error: " + err.Error())
+		d.logger.Error(err.Error())
 		return
 	}
 
@@ -74,7 +75,7 @@ func (d *DispatchClient) DispatchMessage(incomingMessage string) {
 
 	// Check error
 	if err != nil {
-		d.logger.Trace("Error: " + err.Error())
+		d.logger.Error(err.Error())
 		// Hrm... what do we do with this?
 		d.bus.PublishForTarget("generic:message", incomingMessage, d.id)
 		return
