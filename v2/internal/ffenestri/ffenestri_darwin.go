@@ -58,15 +58,15 @@ func (a *Application) processPlatformSettings() error {
 		C.WindowBackgroundIsTranslucent(a.app)
 	}
 
-	// Process menu
-	//applicationMenu := options.GetApplicationMenu(a.config)
-	applicationMenu := a.menuManager.GetApplicationMenuJSON()
-	if applicationMenu != "" {
-		C.SetApplicationMenu(a.app, a.string2CString(applicationMenu))
-	}
+	//// Process menu
+	////applicationMenu := options.GetApplicationMenu(a.config)
+	//applicationMenu := a.menuManager.GetApplicationMenuJSON()
+	//if applicationMenu != "" {
+	//	C.SetApplicationMenu(a.app, a.string2CString(applicationMenu))
+	//}
 
 	// Process tray
-	trays, err := a.menuManager.GetTrayMenus()
+	trays, err := a.menuManager.GetTrayMenusAsJSON()
 	if err != nil {
 		return err
 	}
@@ -76,16 +76,16 @@ func (a *Application) processPlatformSettings() error {
 		}
 	}
 
-	// Process context menus
-	contextMenus, err := a.menuManager.GetContextMenus()
-	if err != nil {
-		return err
-	}
-	if contextMenus != nil {
-		for _, contextMenu := range contextMenus {
-			C.AddContextMenu(a.app, a.string2CString(contextMenu))
-		}
-	}
+	//// Process context menus
+	//contextMenus, err := a.menuManager.GetContextMenus()
+	//if err != nil {
+	//	return err
+	//}
+	//if contextMenus != nil {
+	//	for _, contextMenu := range contextMenus {
+	//		C.AddContextMenu(a.app, a.string2CString(contextMenu))
+	//	}
+	//}
 
 	return nil
 }

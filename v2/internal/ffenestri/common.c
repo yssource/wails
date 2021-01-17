@@ -49,10 +49,14 @@ void ABORT_JSON(JsonNode *node, const char* key) {
     ABORT("Unable to read required key '%s' from JSON: %s\n", key, json_encode(node));
 }
 
-const char* mustJSONString(JsonNode *node, const char* key) {
-    const char* result = getJSONString(node, key);
-    if ( result == NULL ) {
-        ABORT_JSON(node, key);
+const char* mustJSONString(JsonNode *item, const char* key) {
+    JsonNode *member = json_find_member(item, key);
+    if ( member == NULL ) {
+        ABORT_JSON(member, key);
+    }
+    const char *result = "";
+    if ( member != NULL && member->tag == JSON_STRING) {
+        result = member->string_;
     }
     return result;
 }
@@ -68,13 +72,21 @@ JsonNode* getJSONObject(JsonNode* node, const char* key) {
     return json_find_member(node, key);
 }
 
-bool getJSONBool(JsonNode *item, const char* key, bool *result) {
-    JsonNode *node = json_find_member(item, key);
-    if ( node != NULL && node->tag == JSON_BOOL) {
-        *result = node->bool_;
-        return true;
+bool getJSONBool(JsonNode *node, const char* key) {
+    JsonNode *result = json_find_member(node, key);
+    if ( result != NULL && result->tag == JSON_BOOL) {
+        return result->bool_;
     }
     return false;
+}
+
+int mustJSONInt(JsonNode *node, const char* key) {
+    JsonNode *result = json_find_member(node, key);
+    if ( result == NULL || result->tag != JSON_NUMBER) {
+        ABORT_JSON(result, key);
+    }
+
+    return (int) result->number_;
 }
 
 bool getJSONInt(JsonNode *item, const char* key, int *result) {

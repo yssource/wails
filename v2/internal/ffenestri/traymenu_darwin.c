@@ -21,26 +21,31 @@ TrayMenu* NewTrayMenu(const char* menuJSON) {
         ABORT("[NewTrayMenu] Unable to parse TrayMenu JSON: %s", menuJSON);
     }
 
-    // Save reference to this json
-    result->processedJSON = processedJSON;
-
     // TODO: Make this configurable
     result->trayIconPosition = NSImageLeft;
 
-    result->ID = mustJSONString(processedJSON, "ID");
-    result->label = mustJSONString(processedJSON, "Label");
-    result->icon = mustJSONString(processedJSON, "Icon");
-    JsonNode* processedMenu = mustJSONObject(processedJSON, "ProcessedMenu");
+    result->ID = STRCOPY(mustJSONString(processedJSON, "I"));
+    result->label = STRCOPY(getJSONString(processedJSON, "l"));
+    result->icon = STRCOPY(getJSONString(processedJSON, "i"));
+    result->menu = NULL;
 
-    // Create the menu
-    result->menu = NewMenu(processedMenu);
+    JsonNode* menu = getJSONObject(processedJSON, "m");
+    if( menu != NULL ) {
+
+        JsonNode* radioGroups = getJSONObject(processedJSON, "r");
+
+        // Create the menu
+        result->menu = NewMenu(menu, radioGroups);
+        result->menu->menuType = TrayMenuType;
+        result->menu->parentData = (void*) result->ID;
+
+    }
 
     // Init tray status bar item
     result->statusbaritem = NULL;
 
-    // Set the menu type and store the tray ID in the parent data
-    result->menu->menuType = TrayMenuType;
-    result->menu->parentData = (void*) result->ID;
+    // Free JSON
+    json_delete(processedJSON);
 
     return result;
 }
@@ -104,8 +109,9 @@ void ShowTrayMenu(TrayMenu* trayMenu) {
     UpdateTrayLabel(trayMenu, trayMenu->label);
 
     // Update the menu
-    id menu = GetMenu(trayMenu->menu);
-    msg(trayMenu->statusbaritem, s("setMenu:"), menu);
+    if (trayMenu->menu != NULL ) {
+        msg(trayMenu->statusbaritem, s("setMenu:"), trayMenu->menu->menu);
+    }
 }
 
 // UpdateTrayMenuInPlace receives 2 menus. The current menu gets
@@ -118,17 +124,11 @@ void UpdateTrayMenuInPlace(TrayMenu* currentMenu, TrayMenu* newMenu) {
     // Set the new one
     currentMenu->menu = newMenu->menu;
 
-    // Delete the old JSON
-    json_delete(currentMenu->processedJSON);
-
-    // Set the new JSON
-    currentMenu->processedJSON = newMenu->processedJSON;
-
     // Copy the other data
-    currentMenu->ID = newMenu->ID;
-    currentMenu->label = newMenu->label;
+    currentMenu->ID = STRCOPY(newMenu->ID);
+    currentMenu->label = STRCOPY(newMenu->label);
     currentMenu->trayIconPosition = newMenu->trayIconPosition;
-    currentMenu->icon = newMenu->icon;
+    currentMenu->icon = STRCOPY(newMenu->icon);
 
 }
 
@@ -140,10 +140,10 @@ void DeleteTrayMenu(TrayMenu* trayMenu) {
     // Delete the menu
     DeleteMenu(trayMenu->menu);
 
-    // Free JSON
-    if (trayMenu->processedJSON != NULL ) {
-        json_delete(trayMenu->processedJSON);
-    }
+    // Free strings
+    MEMFREE(trayMenu->label);
+    MEMFREE(trayMenu->icon);
+    MEMFREE(trayMenu->ID);
 
     // Free the status item
     if ( trayMenu->statusbaritem != NULL ) {

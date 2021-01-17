@@ -1231,8 +1231,7 @@ struct hashmap_s *menuItemMap, const char *checkboxCallbackFunction, const char
 *radioCallbackFunction, const char *menuCallbackFunction) {
 
   // Check if this item is hidden and if so, exit early!
-  bool hidden = false;
-  getJSONBool(item, "Hidden", &hidden);
+  bool hidden = getJSONBool(item, "Hidden");
   if( hidden ) {
 	return;
   }
@@ -1282,8 +1281,7 @@ struct hashmap_s *menuItemMap, const char *checkboxCallbackFunction, const char
 	menuid = "";
   }
 
-  bool disabled = false;
-  getJSONBool(item, "Disabled", &disabled);
+  bool disabled = getJSONBool(item, "Disabled");
 
   // Get the Accelerator
   JsonNode *accelerator = json_find_member(item, "Accelerator");
@@ -1330,15 +1328,13 @@ struct hashmap_s *menuItemMap, const char *checkboxCallbackFunction, const char
 	}
 	else if ( STREQ(type->string_, "Checkbox")) {
 	  // Get checked state
-	  bool checked = false;
-	  getJSONBool(item, "Checked", &checked);
+	  bool checked = getJSONBool(item, "Checked");
 
 	  parseCheckboxMenuItem(app, parentMenu, label, menuid, disabled, checked, "", menuItemMap, checkboxCallbackFunction);
 	}
 	else if ( STREQ(type->string_, "Radio")) {
 	  // Get checked state
-	  bool checked = false;
-	  getJSONBool(item, "Checked", &checked);
+	  bool checked = getJSONBool(item, "Checked");
 
 	  parseRadioMenuItem(app, parentMenu, label, menuid, disabled, checked, "", menuItemMap, radioCallbackFunction);
 	}
@@ -1422,9 +1418,8 @@ void updateMenu(struct Application *app, const char *menuAsJSON) {
 	ON_MAIN_THREAD (
 		DeleteMenu(app->applicationMenu);
 		Menu* newMenu = NewApplicationMenu(menuAsJSON);
-        id menu = GetMenu(newMenu);
         app->applicationMenu = newMenu;
-	    msg(msg(c("NSApplication"), s("sharedApplication")), s("setMainMenu:"), menu);
+	    msg(msg(c("NSApplication"), s("sharedApplication")), s("setMainMenu:"), newMenu->menu);
 	);
 }
 
@@ -1481,7 +1476,7 @@ void processUserDialogIcons(struct Application *app) {
 }
 
 
-void Run(struct Application *app, int argc, char **argv) {
+void Run(struct Application *app) {
 
 	// Process window decorations
 	processDecorations(app);
@@ -1656,8 +1651,7 @@ void Run(struct Application *app, int argc, char **argv) {
 
 	// If we have an application menu, process it
 	if( app->applicationMenu != NULL ) {
-	    id menu = GetMenu(app->applicationMenu);
-	    msg(msg(c("NSApplication"), s("sharedApplication")), s("setMainMenu:"), menu);
+	    msg(msg(c("NSApplication"), s("sharedApplication")), s("setMainMenu:"), app->applicationMenu->menu);
 	}
 
 	// Setup initial trays

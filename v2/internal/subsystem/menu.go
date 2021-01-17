@@ -80,9 +80,7 @@ func (m *Menu) Start() error {
 
 					type ClickCallbackMessage struct {
 						MenuItemID string `json:"menuItemID"`
-						MenuType   string `json:"menuType"`
 						Data       string `json:"data"`
-						ParentID   string `json:"parentID"`
 					}
 
 					var callbackData ClickCallbackMessage
@@ -93,7 +91,7 @@ func (m *Menu) Start() error {
 						return
 					}
 
-					err = m.menuManager.ProcessClick(callbackData.MenuItemID, callbackData.Data, callbackData.MenuType, callbackData.ParentID)
+					err = m.menuManager.ProcessClick(callbackData.MenuItemID, callbackData.Data)
 					if err != nil {
 						m.logger.Trace("%s", err.Error())
 					}

@@ -5,6 +5,8 @@
 #ifndef TRAYMENUSTORE_DARWIN_H
 #define TRAYMENUSTORE_DARWIN_H
 
+#include "traymenu_darwin.h"
+
 typedef struct {
 
 	int dummy;
@@ -18,7 +20,7 @@ typedef struct {
 TrayMenuStore* NewTrayMenuStore();
 
 void AddTrayMenuToStore(TrayMenuStore* store, const char* menuJSON);
-void UpdateTrayMenuInStore(TrayMenuStore* store, const char* menuJSON);
+TrayMenu* UpdateTrayMenuInStore(TrayMenuStore* store, const char* menuJSON);
 void ShowTrayMenusInStore(TrayMenuStore* store);
 void DeleteTrayMenuStore(TrayMenuStore* store);
 

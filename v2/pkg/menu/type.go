@@ -5,13 +5,13 @@ type Type string
 
 const (
 	// TextType is the text menuitem type
-	TextType Type = "Text"
+	TextType Type = "t"
 	// SeparatorType is the Separator menuitem type
-	SeparatorType Type = "Separator"
+	SeparatorType Type = "s"
 	// SubmenuType is the Submenu menuitem type
-	SubmenuType Type = "Submenu"
+	SubmenuType Type = "S"
 	// CheckboxType is the Checkbox menuitem type
-	CheckboxType Type = "Checkbox"
+	CheckboxType Type = "c"
 	// RadioType is the Radio menuitem type
-	RadioType Type = "Radio"
+	RadioType Type = "r"
 )

@@ -7,11 +7,9 @@
 #include "contextmenus_darwin.h"
 
 // NewMenu creates a new Menu struct, saving the given menu structure as JSON
-Menu* NewMenu(JsonNode *menuData) {
+Menu* NewMenu(JsonNode *menuData, JsonNode *radioGroups) {
 
     Menu *result = malloc(sizeof(Menu));
-
-    result->processedMenu = menuData;
 
     // No title by default
     result->title = "";
@@ -32,6 +30,9 @@ Menu* NewMenu(JsonNode *menuData) {
     result->menu = NULL;
     result->parentData = NULL;
 
+    // Process the menu
+    ProcessMenu(result, menuData, radioGroups);
+
     return result;
 }
 
@@ -44,7 +45,8 @@ Menu* NewApplicationMenu(const char *menuAsJSON) {
         ABORT("Unable to parse Menu JSON: %s", menuAsJSON);
     }
 
-    Menu *result = NewMenu(processedMenu);
+    // TODO - fixup
+    Menu *result = NewMenu(processedMenu, NULL);
     result->menuType = ApplicationMenuType;
     return result;
 }
@@ -67,6 +69,10 @@ MenuItemCallbackData* CreateMenuItemCallbackData(Menu *menu, id menuItem, const 
 
 void DeleteMenu(Menu *menu) {
 
+    if( menu == NULL ) {
+        return;
+    }
+
     // Free menu item hashmap
     hashmap_destroy(&menu->menuItemMap);
 
@@ -80,12 +86,6 @@ void DeleteMenu(Menu *menu) {
     // Free radio groups hashmap
     hashmap_destroy(&menu->radioGroupMap);
 
-    // Free up the processed menu memory
-    if (menu->processedMenu != NULL) {
-        json_delete(menu->processedMenu);
-        menu->processedMenu = NULL;
-    }
-
     // Release the vector memory
     vec_deinit(&menu->callbackDataCache);
 
@@ -98,19 +98,15 @@ void DeleteMenu(Menu *menu) {
 }
 
 // Creates a JSON message for the given menuItemID and data
-const char* createMenuClickedMessage(const char *menuItemID, const char *data, enum MenuType menuType, const char *parentID) {
+const char* createMenuClickedMessage(const char *menuItemID, const char *data) {
 
     JsonNode *jsonObject = json_mkobject();
     if (menuItemID == NULL ) {
         ABORT("Item ID NULL for menu!!\n");
     }
-    json_append_member(jsonObject, "menuItemID", json_mkstring(menuItemID));
-    json_append_member(jsonObject, "menuType", json_mkstring(MenuTypeAsString[(int)menuType]));
+    json_append_member(jsonObject, "i", json_mkstring(menuItemID));
     if (data != NULL) {
         json_append_member(jsonObject, "data", json_mkstring(data));
-    }
-    if (parentID != NULL) {
-        json_append_member(jsonObject, "parentID", json_mkstring(parentID));
     }
     const char *payload = json_encode(jsonObject);
     json_delete(jsonObject);
@@ -155,19 +151,15 @@ void menuItemCallback(id self, SEL cmd, id sender) {
     const char *menuID = callbackData->menuID;
     const char *data = NULL;
     enum MenuType menuType = callbackData->menu->menuType;
-    const char *parentID = NULL;
 
     // Generate message to send to backend
     if( menuType == ContextMenuType ) {
         // Get the context menu data from the menu
         ContextMenu* contextMenu = (ContextMenu*) callbackData->menu->parentData;
         data = contextMenu->contextMenuData;
-        parentID = contextMenu->ID;
-    } else if ( menuType == TrayMenuType ) {
-        parentID = (const char*) callbackData->menu->parentData;
     }
 
-    message = createMenuClickedMessage(menuID, data, menuType, parentID);
+    message = createMenuClickedMessage(menuID, data);
 
     // Notify the backend
     messageFromWindowCallback(message);
@@ -531,17 +523,20 @@ unsigned long parseModifiers(const char **modifiers) {
     return result;
 }
 
-id processRadioMenuItem(Menu *menu, id parentmenu, const char *title, const char *menuid, bool disabled, bool checked, const char *acceleratorkey) {
+id processRadioMenuItem(Menu *menu, id parentmenu, const char *title, const char *menuid, bool disabled, bool checked, const char *acceleratorkey, bool hascallback) {
     id item = ALLOC("NSMenuItem");
 
     // Store the item in the menu item map
     hashmap_put(&menu->menuItemMap, (char*)menuid, strlen(menuid), item);
 
-    // Create a MenuItemCallbackData
-    MenuItemCallbackData *callback = CreateMenuItemCallbackData(menu, item, menuid, Radio);
+    if( hascallback ) {
+        // Create a MenuItemCallbackData
+        MenuItemCallbackData *callback = CreateMenuItemCallbackData(menu, item, menuid, Radio);
 
-    id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), callback);
-    msg(item, s("setRepresentedObject:"), wrappedId);
+        id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), callback);
+        msg(item, s("setRepresentedObject:"), wrappedId);
+    }
+
 
     id key = processAcceleratorKey(acceleratorkey);
 
@@ -556,18 +551,21 @@ id processRadioMenuItem(Menu *menu, id parentmenu, const char *title, const char
 
 }
 
-id processCheckboxMenuItem(Menu *menu, id parentmenu, const char *title, const char *menuid, bool disabled, bool checked, const char *key) {
+id processCheckboxMenuItem(Menu *menu, id parentmenu, const char *title, const char *menuid, bool disabled, bool checked, const char *key, bool hascallback) {
 
     id item = ALLOC("NSMenuItem");
 
     // Store the item in the menu item map
     hashmap_put(&menu->menuItemMap, (char*)menuid, strlen(menuid), item);
 
-    // Create a MenuItemCallbackData
-    MenuItemCallbackData *callback = CreateMenuItemCallbackData(menu, item, menuid, Checkbox);
+    if( hascallback ) {
+        // Create a MenuItemCallbackData
+        MenuItemCallbackData *callback = CreateMenuItemCallbackData(menu, item, menuid, Checkbox);
 
-    id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), callback);
-    msg(item, s("setRepresentedObject:"), wrappedId);
+        id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), callback);
+        msg(item, s("setRepresentedObject:"), wrappedId);
+    }
+
     msg(item, s("initWithTitle:action:keyEquivalent:"), str(title), s("menuItemCallback:"), str(key));
     msg(item, s("setEnabled:"), !disabled);
     msg(item, s("autorelease"));
@@ -576,14 +574,16 @@ id processCheckboxMenuItem(Menu *menu, id parentmenu, const char *title, const c
     return item;
 }
 
-id processTextMenuItem(Menu *menu, id parentMenu, const char *title, const char *menuid, bool disabled, const char *acceleratorkey, const char **modifiers) {
+id processTextMenuItem(Menu *menu, id parentMenu, const char *title, const char *menuid, bool disabled, const char *acceleratorkey, const char **modifiers, bool hascallback) {
     id item = ALLOC("NSMenuItem");
 
-    // Create a MenuItemCallbackData
-    MenuItemCallbackData *callback = CreateMenuItemCallbackData(menu, item, menuid, Text);
+    if( hascallback ) {
+        // Create a MenuItemCallbackData
+        MenuItemCallbackData *callback = CreateMenuItemCallbackData(menu, item, menuid, Text);
 
-    id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), callback);
-    msg(item, s("setRepresentedObject:"), wrappedId);
+        id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), callback);
+        msg(item, s("setRepresentedObject:"), wrappedId);
+    }
 
     id key = processAcceleratorKey(acceleratorkey);
     msg(item, s("initWithTitle:action:keyEquivalent:"), str(title),
@@ -605,24 +605,23 @@ id processTextMenuItem(Menu *menu, id parentMenu, const char *title, const char 
 void processMenuItem(Menu *menu, id parentMenu, JsonNode *item) {
 
     // Check if this item is hidden and if so, exit early!
-    bool hidden = false;
-    getJSONBool(item, "Hidden", &hidden);
+    bool hidden = getJSONBool(item, "h");
     if( hidden ) {
         return;
     }
 
     // Get the role
-    JsonNode *role = json_find_member(item, "Role");
+    JsonNode *role = json_find_member(item, "r");
     if( role != NULL ) {
         processMenuRole(menu, parentMenu, role);
         return;
     }
 
     // Check if this is a submenu
-    JsonNode *submenu = json_find_member(item, "SubMenu");
+    JsonNode *submenu = json_find_member(item, "S");
     if( submenu != NULL ) {
         // Get the label
-        JsonNode *menuNameNode = json_find_member(item, "Label");
+        JsonNode *menuNameNode = json_find_member(item, "l");
         const char *name = "";
         if ( menuNameNode != NULL) {
             name = menuNameNode->string_;
@@ -634,7 +633,7 @@ void processMenuItem(Menu *menu, id parentMenu, JsonNode *item) {
         msg(thisMenuItem, s("setSubmenu:"), thisMenu);
         msg(parentMenu, s("addItem:"), thisMenuItem);
 
-        JsonNode *submenuItems = json_find_member(submenu, "Items");
+        JsonNode *submenuItems = json_find_member(submenu, "i");
         // If we have no items, just return
         if ( submenuItems == NULL ) {
             return;
@@ -652,21 +651,20 @@ void processMenuItem(Menu *menu, id parentMenu, JsonNode *item) {
 
     // This is a user menu. Get the common data
     // Get the label
-    const char *label = getJSONString(item, "Label");
+    const char *label = getJSONString(item, "l");
     if ( label == NULL) {
         label = "(empty)";
     }
 
-    const char *menuid = getJSONString(item, "ID");
+    const char *menuid = getJSONString(item, "I");
     if ( menuid == NULL) {
         menuid = "";
     }
 
-    bool disabled = false;
-    getJSONBool(item, "Disabled", &disabled);
+    bool disabled = getJSONBool(item, "d");
 
     // Get the Accelerator
-    JsonNode *accelerator = json_find_member(item, "Accelerator");
+    JsonNode *accelerator = json_find_member(item, "a");
     const char *acceleratorkey = NULL;
     const char **modifiers = NULL;
 
@@ -697,29 +695,30 @@ void processMenuItem(Menu *menu, id parentMenu, JsonNode *item) {
         }
     }
 
+    // has callback?
+    bool hascallback = getJSONBool(item, "C");
+
     // Get the Type
-    JsonNode *type = json_find_member(item, "Type");
+    JsonNode *type = json_find_member(item, "t");
     if( type != NULL ) {
 
-        if( STREQ(type->string_, "Text")) {
-            processTextMenuItem(menu, parentMenu, label, menuid, disabled, acceleratorkey, modifiers);
+        if( STREQ(type->string_, "t")) {
+            processTextMenuItem(menu, parentMenu, label, menuid, disabled, acceleratorkey, modifiers, hascallback);
         }
-        else if ( STREQ(type->string_, "Separator")) {
+        else if ( STREQ(type->string_, "s")) {
             addSeparator(parentMenu);
         }
-        else if ( STREQ(type->string_, "Checkbox")) {
+        else if ( STREQ(type->string_, "c")) {
             // Get checked state
-            bool checked = false;
-            getJSONBool(item, "Checked", &checked);
+            bool checked = getJSONBool(item, "c");
 
-            processCheckboxMenuItem(menu, parentMenu, label, menuid, disabled, checked, "");
+            processCheckboxMenuItem(menu, parentMenu, label, menuid, disabled, checked, "", hascallback);
         }
-        else if ( STREQ(type->string_, "Radio")) {
+        else if ( STREQ(type->string_, "r")) {
             // Get checked state
-            bool checked = false;
-            getJSONBool(item, "Checked", &checked);
+            bool checked = getJSONBool(item, "c");
 
-            processRadioMenuItem(menu, parentMenu, label, menuid, disabled, checked, "");
+            processRadioMenuItem(menu, parentMenu, label, menuid, disabled, checked, "", hascallback);
         }
 
     }
@@ -732,15 +731,9 @@ void processMenuItem(Menu *menu, id parentMenu, JsonNode *item) {
 }
 
 void processMenuData(Menu *menu, JsonNode *menuData) {
-    JsonNode *items = json_find_member(menuData, "Items");
-    if( items == NULL ) {
-        // Parse error!
-        ABORT("Unable to find 'Items' in menu JSON!");
-    }
-
     // Iterate items
     JsonNode *item;
-    json_foreach(item, items) {
+    json_foreach(item, menuData) {
         // Process each menu item
         processMenuItem(menu, menu->menu, item);
     }
@@ -780,12 +773,11 @@ void processRadioGroupJSON(Menu *menu, JsonNode *radioGroup) {
 
 }
 
-id GetMenu(Menu *menu) {
+id ProcessMenu(Menu *menu, JsonNode *menuData, JsonNode *radioGroups) {
 
-    // Pull out the menu data
-    JsonNode *menuData = json_find_member(menu->processedMenu, "Menu");
+    // exit if we have no meny
     if( menuData == NULL ) {
-        ABORT("Unable to find Menu data: %s", menu->processedMenu);
+        return NULL;
     }
 
     menu->menu = createMenu(str(""));
@@ -793,18 +785,13 @@ id GetMenu(Menu *menu) {
     // Process the menu data
     processMenuData(menu, menuData);
 
-    // Create the radiogroup cache
-    JsonNode *radioGroups = json_find_member(menu->processedMenu, "RadioGroups");
-    if( radioGroups == NULL ) {
-        // Parse error!
-        ABORT("Unable to find RadioGroups data: %s", menu->processedMenu);
-    }
-
-    // Iterate radio groups
-    JsonNode *radioGroup;
-    json_foreach(radioGroup, radioGroups) {
-        // Get item label
-        processRadioGroupJSON(menu, radioGroup);
+    if( radioGroups != NULL ) {
+        // Iterate radio groups
+        JsonNode *radioGroup;
+        json_foreach(radioGroup, radioGroups) {
+            // Get item label
+            processRadioGroupJSON(menu, radioGroup);
+        }
     }
 
     return menu->menu;

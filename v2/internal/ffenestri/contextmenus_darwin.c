@@ -21,7 +21,7 @@ ContextMenu* NewContextMenu(const char* contextMenuJSON) {
     result->ID = mustJSONString(processedJSON, "ID");
     JsonNode* processedMenu = mustJSONObject(processedJSON, "ProcessedMenu");
 
-    result->menu = NewMenu(processedMenu);
+//    result->menu = NewMenu(processedMenu);
     result->nsmenu = NULL;
     result->menu->menuType = ContextMenuType;
     result->menu->parentData = result;
@@ -87,10 +87,10 @@ void ShowContextMenu(ContextMenuStore* store, id mainWindow, const char *context
 	// Get the triggering event
 	id menuEvent = msg(mainWindow, s("currentEvent"));
 
-	if( contextMenu->nsmenu == NULL ) {
-        // GetMenu creates the NSMenu
-        contextMenu->nsmenu = GetMenu(contextMenu->menu);
-	}
+//	if( contextMenu->nsmenu == NULL ) {
+//        // GetMenu creates the NSMenu
+//        contextMenu->nsmenu = GetMenu(contextMenu->menu);
+//	}
 
 	// Show popup
 	msg(c("NSMenu"), s("popUpContextMenu:withEvent:forView:"), contextMenu->nsmenu, menuEvent, contentView);

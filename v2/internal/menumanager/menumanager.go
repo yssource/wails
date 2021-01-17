@@ -2,89 +2,49 @@ package menumanager
 
 import (
 	"fmt"
+	"github.com/wailsapp/wails/v2/internal/counter"
 	"github.com/wailsapp/wails/v2/pkg/menu"
 )
 
 type Manager struct {
 
-	// The application menu.
-	applicationMenu     *menu.Menu
-	applicationMenuJSON string
+	// MenuItemMap is a map of all menu items against a generated ID
+	menuItemMap        map[string]*menu.MenuItem
+	menuItemIDCounter  *counter.Counter
+	processedMenuItems map[*menu.MenuItem]*ProcessedMenuItem
 
-	// Our application menu mappings
-	applicationMenuItemMap *MenuItemMap
-
-	// Context menus
-	contextMenus        map[string]*ContextMenu
-	contextMenuPointers map[*menu.ContextMenu]string
-
-	// Tray menu stores
-	trayMenus        map[string]*TrayMenu
-	trayMenuPointers map[*menu.TrayMenu]string
+	// Map wails menus to internal menus
+	trayMenuMap       map[*menu.TrayMenu]*TrayMenu
+	trayMenuIDCounter *counter.Counter
 }
 
 func NewManager() *Manager {
 	return &Manager{
-		applicationMenuItemMap: NewMenuItemMap(),
-		contextMenus:           make(map[string]*ContextMenu),
-		contextMenuPointers:    make(map[*menu.ContextMenu]string),
-		trayMenus:              make(map[string]*TrayMenu),
-		trayMenuPointers:       make(map[*menu.TrayMenu]string),
+		trayMenuMap:        make(map[*menu.TrayMenu]*TrayMenu),
+		trayMenuIDCounter:  counter.NewCounter(0),
+		menuItemMap:        make(map[string]*menu.MenuItem),
+		menuItemIDCounter:  counter.NewCounter(0),
+		processedMenuItems: make(map[*menu.MenuItem]*ProcessedMenuItem),
 	}
 }
 
-func (m *Manager) getMenuItemByID(menuMap *MenuItemMap, menuId string) *menu.MenuItem {
-	return menuMap.idToMenuItemMap[menuId]
-}
-
-func (m *Manager) ProcessClick(menuID string, data string, menuType string, parentID string) error {
-
-	var menuItemMap *MenuItemMap
-
-	switch menuType {
-	case "ApplicationMenu":
-		menuItemMap = m.applicationMenuItemMap
-	case "ContextMenu":
-		contextMenu := m.contextMenus[parentID]
-		if contextMenu == nil {
-			return fmt.Errorf("unknown context menu: %s", parentID)
-		}
-		menuItemMap = contextMenu.menuItemMap
-	case "TrayMenu":
-		trayMenu := m.trayMenus[parentID]
-		if trayMenu == nil {
-			return fmt.Errorf("unknown tray menu: %s", parentID)
-		}
-		menuItemMap = trayMenu.menuItemMap
-	default:
-		return fmt.Errorf("unknown menutype: %s", menuType)
-	}
-
-	// Get the menu item
-	menuItem := menuItemMap.getMenuItemByID(menuID)
+func (m *Manager) ProcessClick(menuID string, data string) error {
+	// Get item from callback map
+	menuItem := m.menuItemMap[menuID]
 	if menuItem == nil {
-		return fmt.Errorf("Cannot process menuid %s - unknown", menuID)
-	}
-
-	// Is the menu item a checkbox?
-	if menuItem.Type == menu.CheckboxType {
-		// Toggle state
-		menuItem.Checked = !menuItem.Checked
+		return fmt.Errorf("menuItem doesn't exist")
 	}
 
 	if menuItem.Click == nil {
-		// No callback
-		return fmt.Errorf("No callback for menu '%s'", menuItem.Label)
+		return fmt.Errorf("menuItem 'does not have a callback")
 	}
 
-	// Create new Callback struct
 	callbackData := &menu.CallbackData{
 		MenuItem:    menuItem,
 		ContextData: data,
 	}
 
-	// Call back!
+	// Callback!
 	go menuItem.Click(callbackData)
-
 	return nil
 }

@@ -13,10 +13,8 @@ var Default = &App{
 	DevTools: false,
 	RGBA:     0xFFFFFFFF,
 	Mac: &mac.Options{
-		TitleBar:                      mac.TitleBarDefault(),
-		Appearance:                    mac.DefaultAppearance,
-		WebviewIsTransparent:          false,
-		WindowBackgroundIsTranslucent: false,
+		TitleBar:   mac.TitleBarDefault(),
+		Appearance: mac.DefaultAppearance,
 	},
 	Logger:   logger.NewDefaultLogger(),
 	LogLevel: logger.INFO,

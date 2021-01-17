@@ -18,9 +18,6 @@ typedef struct {
 
     id statusbaritem;
     int trayIconPosition;
-
-    JsonNode* processedJSON;
-
 } TrayMenu;
 
 TrayMenu* NewTrayMenu(const char *trayJSON);

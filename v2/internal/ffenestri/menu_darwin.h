@@ -22,9 +22,6 @@ typedef struct {
 
     /*** Internal ***/
 
-    // The decoded version of the Menu JSON
-    JsonNode *processedMenu;
-
     struct hashmap_s menuItemMap;
     struct hashmap_s radioGroupMap;
 
@@ -57,7 +54,7 @@ typedef struct {
 
 
 // NewMenu creates a new Menu struct, saving the given menu structure as JSON
-Menu* NewMenu(JsonNode *menuData);
+Menu* NewMenu(JsonNode *menuData, JsonNode* radioGroups);
 
 Menu* NewApplicationMenu(const char *menuAsJSON);
 MenuItemCallbackData* CreateMenuItemCallbackData(Menu *menu, id menuItem, const char *menuID, enum MenuItemType menuItemType);
@@ -65,7 +62,8 @@ MenuItemCallbackData* CreateMenuItemCallbackData(Menu *menu, id menuItem, const 
 void DeleteMenu(Menu *menu);
 
 // Creates a JSON message for the given menuItemID and data
-const char* createMenuClickedMessage(const char *menuItemID, const char *data, enum MenuType menuType, const char *parentID);
+const char* createMenuClickedMessage(const char *menuItemID, const char *data);
+
 // Callback for text menu items
 void menuItemCallback(id self, SEL cmd, id sender);
 id processAcceleratorKey(const char *key);
@@ -86,15 +84,15 @@ void processMenuRole(Menu *menu, id parentMenu, JsonNode *item);
 // This converts a string array of modifiers into the
 // equivalent MacOS Modifier Flags
 unsigned long parseModifiers(const char **modifiers);
-id processRadioMenuItem(Menu *menu, id parentmenu, const char *title, const char *menuid, bool disabled, bool checked, const char *acceleratorkey);
+id processRadioMenuItem(Menu *menu, id parentmenu, const char *title, const char *menuid, bool disabled, bool checked, const char *acceleratorkey, bool hasCallback);
 
-id processCheckboxMenuItem(Menu *menu, id parentmenu, const char *title, const char *menuid, bool disabled, bool checked, const char *key);
+id processCheckboxMenuItem(Menu *menu, id parentmenu, const char *title, const char *menuid, bool disabled, bool checked, const char *key, bool hasCallback);
 
-id processTextMenuItem(Menu *menu, id parentMenu, const char *title, const char *menuid, bool disabled, const char *acceleratorkey, const char **modifiers);
+id processTextMenuItem(Menu *menu, id parentMenu, const char *title, const char *menuid, bool disabled, const char *acceleratorkey, const char **modifiers, bool hasCallback);
 
 void processMenuItem(Menu *menu, id parentMenu, JsonNode *item);
 void processMenuData(Menu *menu, JsonNode *menuData);
 
 void processRadioGroupJSON(Menu *menu, JsonNode *radioGroup) ;
-id GetMenu(Menu *menu);
+id ProcessMenu(Menu *menu, JsonNode *menuData, JsonNode *radioGroup);
 #endif //ASSETS_C_MENU_DARWIN_H

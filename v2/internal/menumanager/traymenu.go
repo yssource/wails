@@ -3,29 +3,15 @@ package menumanager
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/wailsapp/wails/v2/pkg/menu"
-	"sync"
 )
 
-var trayMenuID int
-var trayMenuIDMutex sync.Mutex
-
-func generateTrayID() string {
-	trayMenuIDMutex.Lock()
-	result := fmt.Sprintf("%d", trayMenuID)
-	trayMenuID++
-	trayMenuIDMutex.Unlock()
-	return result
-}
-
 type TrayMenu struct {
-	ID            string
-	Label         string
-	Icon          string
-	menuItemMap   *MenuItemMap
-	menu          *menu.Menu
-	ProcessedMenu *WailsMenu
+	ID          string               `json:"I"`
+	Label       string               `json:"l,omitempty"`
+	Icon        string               `json:"i,omitempty"`
+	Menu        []*ProcessedMenuItem `json:"m,omitempty"`
+	RadioGroups []*RadioGroup        `json:"r,omitempty"`
 }
 
 func (t *TrayMenu) AsJSON() (string, error) {
@@ -36,55 +22,47 @@ func (t *TrayMenu) AsJSON() (string, error) {
 	return string(data), nil
 }
 
-func NewTrayMenu(trayMenu *menu.TrayMenu) *TrayMenu {
+func (m *Manager) newTrayMenu(trayMenu *menu.TrayMenu) *TrayMenu {
 
-	result := &TrayMenu{
+	wailsMenu := m.NewWailsMenu(trayMenu.Menu)
+
+	result := TrayMenu{
+		ID:          m.generateTrayID(),
 		Label:       trayMenu.Label,
 		Icon:        trayMenu.Icon,
-		menu:        trayMenu.Menu,
-		menuItemMap: NewMenuItemMap(),
+		Menu:        wailsMenu.Menu,
+		RadioGroups: wailsMenu.RadioGroups,
 	}
 
-	result.menuItemMap.AddMenu(trayMenu.Menu)
-	result.ProcessedMenu = NewWailsMenu(result.menuItemMap, result.menu)
+	return &result
+}
+
+func (m *Manager) AddTrayMenu(trayMenu *menu.TrayMenu) *TrayMenu {
+
+	result := m.newTrayMenu(trayMenu)
+
+	// Add to map
+	m.trayMenuMap[trayMenu] = result
 
 	return result
 }
 
-func (m *Manager) AddTrayMenu(trayMenu *menu.TrayMenu) (string, error) {
-	newTrayMenu := NewTrayMenu(trayMenu)
-
-	// Hook up a new ID
-	trayID := generateTrayID()
-	newTrayMenu.ID = trayID
-
-	// Save the references
-	m.trayMenus[trayID] = newTrayMenu
-	m.trayMenuPointers[trayMenu] = trayID
-
-	return newTrayMenu.AsJSON()
+func (m *Manager) generateTrayID() string {
+	return fmt.Sprintf("T%d", m.trayMenuIDCounter.Increment())
 }
 
-// SetTrayMenu updates or creates a menu
-func (m *Manager) SetTrayMenu(trayMenu *menu.TrayMenu) (string, error) {
-	trayID, trayMenuKnown := m.trayMenuPointers[trayMenu]
-	if !trayMenuKnown {
-		return m.AddTrayMenu(trayMenu)
+func (m *Manager) GetTrayMenus() ([]*TrayMenu, error) {
+	var result []*TrayMenu
+	for _, trayMenu := range m.trayMenuMap {
+		result = append(result, trayMenu)
 	}
 
-	// Create the updated tray menu
-	updatedTrayMenu := NewTrayMenu(trayMenu)
-	updatedTrayMenu.ID = trayID
-
-	// Save the reference
-	m.trayMenus[trayID] = updatedTrayMenu
-
-	return updatedTrayMenu.AsJSON()
+	return result, nil
 }
 
-func (m *Manager) GetTrayMenus() ([]string, error) {
-	result := []string{}
-	for _, trayMenu := range m.trayMenus {
+func (m *Manager) GetTrayMenusAsJSON() ([]string, error) {
+	var result []string
+	for _, trayMenu := range m.trayMenuMap {
 		JSON, err := trayMenu.AsJSON()
 		if err != nil {
 			return nil, err
@@ -95,40 +73,11 @@ func (m *Manager) GetTrayMenus() ([]string, error) {
 	return result, nil
 }
 
-func (m *Manager) UpdateTrayMenuLabel(trayMenu *menu.TrayMenu) (string, error) {
-	trayID, trayMenuKnown := m.trayMenuPointers[trayMenu]
-	if !trayMenuKnown {
-		return "", fmt.Errorf("[UpdateTrayMenuLabel] unknown tray id for tray %s", trayMenu.Label)
-	}
-
-	type LabelUpdate struct {
-		ID    string
-		Label string
-	}
-
-	update := &LabelUpdate{
-		ID:    trayID,
-		Label: trayMenu.Label,
-	}
-
-	data, err := json.Marshal(update)
-	if err != nil {
-		return "", errors.Wrap(err, "[UpdateTrayMenuLabel] ")
-	}
-
-	return string(data), nil
-
+// SetTrayMenu updates or creates a menu
+func (m *Manager) SetTrayMenu(trayMenu *menu.TrayMenu) (string, error) {
+	return "", nil
 }
 
-func (m *Manager) GetContextMenus() ([]string, error) {
-	result := []string{}
-	for _, contextMenu := range m.contextMenus {
-		JSON, err := contextMenu.AsJSON()
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, JSON)
-	}
-
-	return result, nil
+func (m *Manager) UpdateTrayMenuLabel(trayMenu *menu.TrayMenu) (string, error) {
+	return "", nil
 }
