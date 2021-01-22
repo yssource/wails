@@ -26,6 +26,7 @@ func NewProcess(logger *clilogger.CLILogger, cmd string, args ...string) *Proces
 // Start the process
 func (p *Process) Start() error {
 
+	p.cmd.
 	err := p.cmd.Start()
 	if err != nil {
 		return err

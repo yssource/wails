@@ -1,11 +1,10 @@
 
-#ifdef FFENESTRI_DARWIN
-
+#include "ffenestri.h"
 #include "ffenestri_darwin.h"
-#include "menu_darwin.h"
-#include "contextmenus_darwin.h"
-#include "traymenustore_darwin.h"
-#include "traymenu_darwin.h"
+#include "menu.h"
+//#include "contextmenus_darwin.h"
+//#include "traymenustore_darwin.h"
+//#include "traymenu_darwin.h"
 
 // References to assets
 #include "assets.h"
@@ -14,6 +13,10 @@ extern const unsigned char runtime;
 // Dialog icons
 extern const unsigned char *defaultDialogIcons[];
 #include "userdialogicons.h"
+#include "menu_darwin.h"
+
+extern void messageFromWindowCallback(const char *);
+typedef void (*ffenestriCallback)(const char *);
 
 // MAIN DEBUG FLAG
 int debug;
@@ -48,9 +51,6 @@ void dumpHashmap(const char *name, struct hashmap_s *hashmap) {
   }
   printf("}\n");
 }
-
-extern void messageFromWindowCallback(const char *);
-typedef void (*ffenestriCallback)(const char *);
 
 void HideMouse() {
 	msg(c("NSCursor"), s("hide"));
@@ -105,20 +105,25 @@ struct Application {
 	int hideToolbarSeparator;
 	int windowBackgroundIsTranslucent;
 
-	// Menu
-	Menu *applicationMenu;
+//	// Menu
+//	Menu *applicationMenu;
+//
+//	// Tray
+//    TrayMenuStore* trayMenuStore;
 
-	// Tray
-    TrayMenuStore* trayMenuStore;
+    MenuManager* menuManager;
 
 	// Context Menus
-	ContextMenuStore *contextMenuStore;
+//	ContextMenuStore *contextMenuStore;
 
 	// Callback
 	ffenestriCallback sendMessageToBackend;
 
 	// Bindings
 	const char *bindings;
+
+	// Flags
+	bool running;
 
 };
 
@@ -249,6 +254,9 @@ void messageHandler(id self, SEL cmd, id contentController, id message) {
 			Show(app);
 		}
 
+        // Setup initial trays
+        ShowTrayMenus(app->menuManager);
+
 		// TODO: Check this actually does reduce flicker
 		msg(app->config, s("setValue:forKey:"), msg(c("NSNumber"), s("numberWithBool:"), 0), str("suppressesIncrementalRendering"));
 
@@ -316,7 +324,8 @@ void messageHandler(id self, SEL cmd, id contentController, id message) {
 		const char* contextMenuData = STRCOPY(contextMenuDataNode->string_);
 
 		ON_MAIN_THREAD(
-			ShowContextMenu(app->contextMenuStore, app->mainWindow, contextMenuID, contextMenuData);
+		        //TODO: FIX UP
+//			ShowContextMenu(app->contextMenuStore, app->mainWindow, contextMenuID, contextMenuData);
 		);
 
 		json_delete(contextMenuMessageJSON);
@@ -387,7 +396,7 @@ int releaseNSObject(void *const context, struct hashmap_element_s *const e) {
 }
 
 void destroyContextMenus(struct Application *app) {
-    DeleteContextMenuStore(app->contextMenuStore);
+//    DeleteContextMenuStore(app->contextMenuStore);
 }
 
 void freeDialogIconCache(struct Application *app) {
@@ -420,19 +429,8 @@ void DestroyApplication(struct Application *app) {
 		msg( c("NSEvent"), s("removeMonitor:"), app->mouseUpMonitor);
 	}
 
-	// Delete the application menu if we have one
-	if( app->applicationMenu != NULL ) {
-	    DeleteMenu(app->applicationMenu);
-	}
-
     // Delete the tray menu store
-    DeleteTrayMenuStore(app->trayMenuStore);
-
-    // Delete the context menu store
-    DeleteContextMenuStore(app->contextMenuStore);
-
-	// Destroy the context menus
-	destroyContextMenus(app);
+    DeleteMenuManager(app->menuManager);
 
 	// Free dialog icon cache
 	freeDialogIconCache(app);
@@ -579,7 +577,7 @@ void SetPosition(struct Application *app, int x, int y) {
 	);
 }
 
-void processDialogButton(id alert, char *buttonTitle, char *cancelButton, char *defaultButton) {
+void processDialogButton(id alert, const char *buttonTitle, const char *cancelButton, const char *defaultButton) {
 	// If this button is set
 	if( STR_HAS_CHARS(buttonTitle) ) {
         id button = msg(alert, s("addButtonWithTitle:"), str(buttonTitle));
@@ -592,11 +590,11 @@ void processDialogButton(id alert, char *buttonTitle, char *cancelButton, char *
     }
 }
 
-extern void MessageDialog(struct Application *app, char *callbackID, char *type, char *title, char *message, char *icon, char *button1, char *button2, char *button3, char *button4, char *defaultButton, char *cancelButton) {
+extern void MessageDialog(struct Application *app, const char *callbackID, const char *type, const char *title, const char *message, const char *icon, const char *button1, const char *button2, const char *button3, const char *button4, const char *defaultButton, const char *cancelButton) {
 	ON_MAIN_THREAD(
 	    id alert = ALLOC_INIT("NSAlert");
-	    char *dialogType = type;
-	    char *dialogIcon = type;
+	    const char *dialogType = type;
+	    const char *dialogIcon = type;
 
 	    // Default to info type
 	    if( dialogType == NULL ) {
@@ -674,7 +672,7 @@ extern void MessageDialog(struct Application *app, char *callbackID, char *type,
 	    }
 
 		// Run modal
-		char *buttonPressed;
+		const char *buttonPressed;
 	    int response = (int)msg(alert, s("runModal"));
 	    if( response == NSAlertFirstButtonReturn ) {
 	        buttonPressed = button1;
@@ -705,7 +703,7 @@ extern void MessageDialog(struct Application *app, char *callbackID, char *type,
 }
 
 // OpenDialog opens a dialog to select files/directories
-void OpenDialog(struct Application *app, char *callbackID, char *title, char *filters, char *defaultFilename, char *defaultDir, int allowFiles, int allowDirs, int allowMultiple, int showHiddenFiles, int canCreateDirectories, int resolvesAliases, int treatPackagesAsDirectories) {
+void OpenDialog(struct Application *app, const char *callbackID, const char *title, const char *filters, const char *defaultFilename, const char *defaultDir, int allowFiles, int allowDirs, int allowMultiple, int showHiddenFiles, int canCreateDirectories, int resolvesAliases, int treatPackagesAsDirectories) {
 	Debug(app, "OpenDialog Called with callback id: %s", callbackID);
 
 	// Create an open panel
@@ -793,7 +791,7 @@ void OpenDialog(struct Application *app, char *callbackID, char *title, char *fi
 }
 
 // SaveDialog opens a dialog to select files/directories
-void SaveDialog(struct Application *app, char *callbackID, char *title, char *filters, char *defaultFilename, char *defaultDir, int showHiddenFiles, int canCreateDirectories, int treatPackagesAsDirectories) {
+void SaveDialog(struct Application *app, const char *callbackID, const char *title, const char *filters, const char *defaultFilename, const char *defaultDir, int showHiddenFiles, int canCreateDirectories, int treatPackagesAsDirectories) {
 	Debug(app, "SaveDialog Called with callback id: %s", callbackID);
 
 	// Create an open panel
@@ -908,7 +906,7 @@ void SetMaxWindowSize(struct Application *app, int maxWidth, int maxHeight)
 }
 
 
-void SetDebug(void *applicationPointer, int flag) {
+void SetDebug(struct Application *applicationPointer, int flag) {
 	debug = flag;
 }
 
@@ -916,28 +914,31 @@ void SetDebug(void *applicationPointer, int flag) {
 
 // AddContextMenu sets the context menu map for this application
 void AddContextMenu(struct Application *app, const char *contextMenuJSON) {
-	AddContextMenuToStore(app->contextMenuStore, contextMenuJSON);
+//	AddContextMenuToStore(app->contextMenuStore, contextMenuJSON);
 }
 
 void UpdateContextMenu(struct Application *app, const char* contextMenuJSON) {
-    UpdateContextMenuInStore(app->contextMenuStore, contextMenuJSON);
+//    UpdateContextMenuInStore(app->contextMenuStore, contextMenuJSON);
 }
 
 void AddTrayMenu(struct Application *app, const char *trayMenuJSON) {
-	AddTrayMenuToStore(app->trayMenuStore, trayMenuJSON);
+	AddTrayMenuToManager(app->menuManager, trayMenuJSON);
 }
 
 void SetTrayMenu(struct Application *app, const char* trayMenuJSON) {
-    ON_MAIN_THREAD(
-        UpdateTrayMenuInStore(app->trayMenuStore, trayMenuJSON);
-    );
+    TrayMenu *menu = AddTrayMenuToManager(app->menuManager, trayMenuJSON);
+    if( app->running ) {
+        ON_MAIN_THREAD(
+                ShowTrayMenu(menu)
+        );
+    }
 }
 
-void UpdateTrayMenuLabel(struct Application* app, const char* JSON) {
-    ON_MAIN_THREAD(
-        UpdateTrayMenuLabelInStore(app->trayMenuStore, JSON);
-    );
-}
+//void UpdateTrayMenuLabel(struct Application* app, const char* JSON) {
+//    ON_MAIN_THREAD(
+//        UpdateTrayMenuLabelInStore(app->trayMenuStore, JSON);
+//    );
+//}
 
 
 void SetBindings(struct Application *app, const char *bindings) {
@@ -1026,7 +1027,7 @@ void createDelegate(struct Application *app) {
 	class_addMethod(delegateClass, s("applicationWillFinishLaunching:"), (IMP) willFinishLaunching, "v@:@");
 
 	// All Menu Items use a common callback
-    class_addMethod(delegateClass, s("menuItemCallback:"), (IMP)menuItemCallback, "v@:@");
+    class_addMethod(delegateClass, s("menuItemCallback:"), (IMP)PlatformMenuItemCallback, "v@:@");
 
 	// Script handler
 	class_addMethod(delegateClass, s("userContentController:didReceiveScriptMessage:"), (IMP) messageHandler, "v@:@@");
@@ -1083,400 +1084,72 @@ const char* getInitialState(struct Application *app) {
 	return result;
 }
 
-void parseMenuRole(struct Application *app, id parentMenu, JsonNode *item) {
-  const char *roleName = item->string_;
-
-  if ( STREQ(roleName, "appMenu") ) {
-	createDefaultAppMenu(parentMenu);
-	return;
-  }
-  if ( STREQ(roleName, "editMenu")) {
-	createDefaultEditMenu(parentMenu);
-	return;
-  }
-  if ( STREQ(roleName, "hide")) {
-	addMenuItem(parentMenu, "Hide Window", "hide:", "h", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "hideothers")) {
-	id hideOthers = addMenuItem(parentMenu, "Hide Others", "hideOtherApplications:", "h", FALSE);
-	msg(hideOthers, s("setKeyEquivalentModifierMask:"), (NSEventModifierFlagOption | NSEventModifierFlagCommand));
-	return;
-  }
-  if ( STREQ(roleName, "unhide")) {
-	addMenuItem(parentMenu, "Show All", "unhideAllApplications:", "", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "front")) {
-	addMenuItem(parentMenu, "Bring All to Front", "arrangeInFront:", "", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "undo")) {
-	addMenuItem(parentMenu, "Undo", "undo:", "z", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "redo")) {
-	addMenuItem(parentMenu, "Redo", "redo:", "y", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "cut")) {
-	addMenuItem(parentMenu, "Cut", "cut:", "x", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "copy")) {
-	addMenuItem(parentMenu, "Copy", "copy:", "c", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "paste")) {
-	addMenuItem(parentMenu, "Paste", "paste:", "v", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "delete")) {
-	addMenuItem(parentMenu, "Delete", "delete:", "", FALSE);
-	return;
-  }
-  if( STREQ(roleName, "pasteandmatchstyle")) {
-	id pasteandmatchstyle = addMenuItem(parentMenu, "Paste and Match Style", "pasteandmatchstyle:", "v", FALSE);
-	msg(pasteandmatchstyle, s("setKeyEquivalentModifierMask:"), (NSEventModifierFlagOption | NSEventModifierFlagShift | NSEventModifierFlagCommand));
-  }
-  if ( STREQ(roleName, "selectall")) {
-	addMenuItem(parentMenu, "Select All", "selectAll:", "a", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "minimize")) {
-	addMenuItem(parentMenu, "Minimize", "miniaturize:", "m", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "zoom")) {
-	addMenuItem(parentMenu, "Zoom", "performZoom:", "", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "quit")) {
-	addMenuItem(parentMenu, "Quit (More work TBD)", "terminate:", "q", FALSE);
-	return;
-  }
-  if ( STREQ(roleName, "togglefullscreen")) {
-	addMenuItem(parentMenu, "Toggle Full Screen", "toggleFullScreen:", "f", FALSE);
-	return;
-  }
-
-}
-
-id parseTextMenuItem(struct Application *app, id parentMenu, const char *title, const char *menuid, bool disabled, const char *acceleratorkey, const char **modifiers, const char *menuCallback) {
-	id item = ALLOC("NSMenuItem");
-	id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), menuid);
-	msg(item, s("setRepresentedObject:"), wrappedId);
-
-	id key = processAcceleratorKey(acceleratorkey);
-	msg(item, s("initWithTitle:action:keyEquivalent:"), str(title),
-			  s(menuCallback), key);
-
-	msg(item, s("setEnabled:"), !disabled);
-	msg(item, s("autorelease"));
-
-	// Process modifiers
-	if( modifiers != NULL ) {
-		unsigned long modifierFlags = parseModifiers(modifiers);
-		msg(item, s("setKeyEquivalentModifierMask:"), modifierFlags);
-	}
-	msg(parentMenu, s("addItem:"), item);
-
-	return item;
-}
-
-id parseCheckboxMenuItem(struct Application *app, id parentmenu, const char
-*title, const char *menuid, bool disabled, bool checked, const char *key,
-struct hashmap_s *menuItemMap, const char *checkboxCallbackFunction) {
-	id item = ALLOC("NSMenuItem");
-
-	// Store the item in the menu item map
-	hashmap_put(menuItemMap, (char*)menuid, strlen(menuid), item);
-
-	id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), menuid);
-	msg(item, s("setRepresentedObject:"), wrappedId);
-	msg(item, s("initWithTitle:action:keyEquivalent:"), str(title), s(checkboxCallbackFunction), str(key));
-	msg(item, s("setEnabled:"), !disabled);
-	msg(item, s("autorelease"));
-	msg(item, s("setState:"), (checked ? NSControlStateValueOn : NSControlStateValueOff));
-	msg(parentmenu, s("addItem:"), item);
-	return item;
-}
-
-id parseRadioMenuItem(struct Application *app, id parentmenu, const char *title,
- const char *menuid, bool disabled, bool checked, const char *acceleratorkey,
- struct hashmap_s *menuItemMap, const char *radioCallbackFunction) {
-	id item = ALLOC("NSMenuItem");
-
-	// Store the item in the menu item map
-	hashmap_put(menuItemMap, (char*)menuid, strlen(menuid), item);
-
-	id wrappedId = msg(c("NSValue"), s("valueWithPointer:"), menuid);
-	msg(item, s("setRepresentedObject:"), wrappedId);
-
-	id key = processAcceleratorKey(acceleratorkey);
-
-	msg(item, s("initWithTitle:action:keyEquivalent:"), str(title), s(radioCallbackFunction), key);
-
-	msg(item, s("setEnabled:"), !disabled);
-	msg(item, s("autorelease"));
-	msg(item, s("setState:"), (checked ? NSControlStateValueOn : NSControlStateValueOff));
-
-	msg(parentmenu, s("addItem:"), item);
-	return item;
-
-}
-
-void parseMenuItem(struct Application *app, id parentMenu, JsonNode *item,
-struct hashmap_s *menuItemMap, const char *checkboxCallbackFunction, const char
-*radioCallbackFunction, const char *menuCallbackFunction) {
-
-  // Check if this item is hidden and if so, exit early!
-  bool hidden = getJSONBool(item, "Hidden");
-  if( hidden ) {
-	return;
-  }
-
-  // Get the role
-  JsonNode *role = json_find_member(item, "Role");
-  if( role != NULL ) {
-	parseMenuRole(app, parentMenu, role);
-	return;
-  }
-
-  // Check if this is a submenu
-  JsonNode *submenu = json_find_member(item, "SubMenu");
-  if( submenu != NULL ) {
-	// Get the label
-	JsonNode *menuNameNode = json_find_member(item, "Label");
-	const char *name = "";
-	if ( menuNameNode != NULL) {
-	  name = menuNameNode->string_;
-	}
-
-	id thisMenuItem = createMenuItemNoAutorelease(str(name), NULL, "");
-	id thisMenu = createMenu(str(name));
-
-	msg(thisMenuItem, s("setSubmenu:"), thisMenu);
-	msg(parentMenu, s("addItem:"), thisMenuItem);
-
-	// Loop over submenu items
-	JsonNode *item;
-	json_foreach(item, submenu) {
-	  // Get item label
-	  parseMenuItem(app, thisMenu, item, menuItemMap, checkboxCallbackFunction, radioCallbackFunction, menuCallbackFunction);
-	}
-
-	return;
-  }
-
-  // This is a user menu. Get the common data
-  // Get the label
-  const char *label = getJSONString(item, "Label");
-  if ( label == NULL) {
-	label = "(empty)";
-  }
-
-  const char *menuid = getJSONString(item, "ID");
-  if ( menuid == NULL) {
-	menuid = "";
-  }
-
-  bool disabled = getJSONBool(item, "Disabled");
-
-  // Get the Accelerator
-  JsonNode *accelerator = json_find_member(item, "Accelerator");
-  const char *acceleratorkey = NULL;
-  const char **modifiers = NULL;
-
-  // If we have an accelerator
-  if( accelerator != NULL ) {
-	// Get the key
-	  acceleratorkey = getJSONString(accelerator, "Key");
-	  // Check if there are modifiers
-	  JsonNode *modifiersList = json_find_member(accelerator, "Modifiers");
-	  if ( modifiersList != NULL ) {
-		// Allocate an array of strings
-		int noOfModifiers = json_array_length(modifiersList);
-
-		// Do we have any?
-		if (noOfModifiers > 0) {
-			modifiers = malloc(sizeof(const char *) * (noOfModifiers + 1));
-			JsonNode *modifier;
-			int count = 0;
-			// Iterate the modifiers and save a reference to them in our new array
-			json_foreach(modifier, modifiersList) {
-			  // Get modifier name
-			  modifiers[count] = modifier->string_;
-			  count++;
-			}
-			// Null terminate the modifier list
-			modifiers[count] = NULL;
-		  }
-	  }
-  }
-
-
-  // Get the Type
-  JsonNode *type = json_find_member(item, "Type");
-  if( type != NULL ) {
-
-	if( STREQ(type->string_, "Text")) {
-	  parseTextMenuItem(app, parentMenu, label, menuid, disabled, acceleratorkey, modifiers, menuCallbackFunction);
-	}
-	else if ( STREQ(type->string_, "Separator")) {
-	  addSeparator(parentMenu);
-	}
-	else if ( STREQ(type->string_, "Checkbox")) {
-	  // Get checked state
-	  bool checked = getJSONBool(item, "Checked");
-
-	  parseCheckboxMenuItem(app, parentMenu, label, menuid, disabled, checked, "", menuItemMap, checkboxCallbackFunction);
-	}
-	else if ( STREQ(type->string_, "Radio")) {
-	  // Get checked state
-	  bool checked = getJSONBool(item, "Checked");
-
-	  parseRadioMenuItem(app, parentMenu, label, menuid, disabled, checked, "", menuItemMap, radioCallbackFunction);
-	}
-
-	if ( modifiers != NULL ) {
-	  free(modifiers);
-	}
-
-	return;
-  }
-}
-
-void parseMenu(struct Application *app, id parentMenu, JsonNode *menu, struct hashmap_s *menuItemMap, const char *checkboxCallbackFunction, const char *radioCallbackFunction, const char *menuCallbackFunction) {
-  JsonNode *items = json_find_member(menu, "Items");
-  if( items == NULL ) {
-	// Parse error!
-	Fatal(app, "Unable to find Items in Menu");
-	return;
-  }
-
-  // Iterate items
-  JsonNode *item;
-  json_foreach(item, items) {
-	// Get item label
-	parseMenuItem(app, parentMenu, item, menuItemMap, checkboxCallbackFunction, radioCallbackFunction, menuCallbackFunction);
-  }
-}
-
-void dumpMemberList(const char *name, id *memberList) {
-  void *member = memberList[0];
-  int count = 0;
-  printf("%s = %p -> [ ", name, memberList);
-  while( member != NULL ) {
-	printf("%p ", member);
-	count = count + 1;
-	member = memberList[count];
-  }
-  printf("]\n");
-}
-
-void processRadioGroup(JsonNode *radioGroup, struct hashmap_s *menuItemMap,
-struct hashmap_s *radioGroupMap) {
-
-  int groupLength;
-  getJSONInt(radioGroup, "Length", &groupLength);
-  JsonNode *members = json_find_member(radioGroup, "Members");
-  JsonNode *member;
-
-  // Allocate array
-  size_t arrayLength = sizeof(id)*(groupLength+1);
-  id memberList[arrayLength];
-
-  // Build the radio group items
-  int count=0;
-  json_foreach(member, members) {
-	// Get menu by id
-	id menuItem = (id)hashmap_get(menuItemMap, (char*)member->string_, strlen(member->string_));
-	// Save Member
-	memberList[count] = menuItem;
-	count = count + 1;
-  }
-  // Null terminate array
-  memberList[groupLength] = 0;
-
-  // dumpMemberList("memberList", memberList);
-
-  // Store the members
-  json_foreach(member, members) {
-	// Copy the memberList
-	char *newMemberList = (char *)malloc(arrayLength);
-	memcpy(newMemberList, memberList, arrayLength);
-	// add group to each member of group
-	hashmap_put(radioGroupMap, member->string_, strlen(member->string_), newMemberList);
-  }
-
-}
-
-// updateMenu replaces the current menu with the given one
-void updateMenu(struct Application *app, const char *menuAsJSON) {
-	Debug(app, "Menu is now: %s", menuAsJSON);
-	ON_MAIN_THREAD (
-		DeleteMenu(app->applicationMenu);
-		Menu* newMenu = NewApplicationMenu(menuAsJSON);
-        app->applicationMenu = newMenu;
-	    msg(msg(c("NSApplication"), s("sharedApplication")), s("setMainMenu:"), newMenu->menu);
-	);
-}
+//void dumpMemberList(const char *name, id *memberList) {
+//  void *member = memberList[0];
+//  int count = 0;
+//  printf("%s = %p -> [ ", name, memberList);
+//  while( member != NULL ) {
+//	printf("%p ", member);
+//	count = count + 1;
+//	member = memberList[count];
+//  }
+//  printf("]\n");
+//}
 
 // SetApplicationMenu sets the initial menu for the application
-void SetApplicationMenu(struct Application *app, const char *menuAsJSON) {
-    if ( app->applicationMenu == NULL ) {
-	    app->applicationMenu = NewApplicationMenu(menuAsJSON);
-	    return;
-	}
+//void SetApplicationMenu(struct Application *app, const char *menuAsJSON) {
+//    if ( app->applicationMenu == NULL ) {
+//	    app->applicationMenu = NewApplicationMenu(menuAsJSON, (struct TrayMenuStore *) app->trayMenuStore);
+//	    return;
+//	}
+//
+//    // Update menu
+//    updateMenu(app, menuAsJSON);
+//}
 
-    // Update menu
-    updateMenu(app, menuAsJSON);
-}
-
-void processDialogIcons(struct hashmap_s *hashmap, const unsigned char *dialogIcons[]) {
-
-	unsigned int count = 0;
-    while( 1 ) {
-        const unsigned char *name = dialogIcons[count++];
-        if( name == 0x00 ) {
-            break;
-        }
-        const unsigned char *lengthAsString = dialogIcons[count++];
-        if( name == 0x00 ) {
-            break;
-        }
-        const unsigned char *data = dialogIcons[count++];
-        if( data == 0x00 ) {
-            break;
-        }
-        int length = atoi((const char *)lengthAsString);
-
-        // Create the icon and add to the hashmap
-        id imageData = msg(c("NSData"), s("dataWithBytes:length:"), data, length);
-        id dialogImage = ALLOC("NSImage");
-        msg(dialogImage, s("initWithData:"), imageData);
-        hashmap_put(hashmap, (const char *)name, strlen((const char *)name), dialogImage);
-    }
-
-}
-
-void processUserDialogIcons(struct Application *app) {
-
-	// Allocate the Dialog icon hashmap
-	if( 0 != hashmap_create((const unsigned)4, &dialogIconCache)) {
-	   // Couldn't allocate map
-	   Fatal(app, "Not enough memory to allocate dialogIconCache!");
-	   return;
-	}
-
-	processDialogIcons(&dialogIconCache, defaultDialogIcons);
-	processDialogIcons(&dialogIconCache, userDialogIcons);
-
-}
+//void processDialogIcons(struct hashmap_s *hashmap, const unsigned char *dialogIcons[]) {
+//
+//	unsigned int count = 0;
+//    while( 1 ) {
+//        const unsigned char *name = dialogIcons[count++];
+//        if( name == 0x00 ) {
+//            break;
+//        }
+//        const unsigned char *lengthAsString = dialogIcons[count++];
+//        if( name == 0x00 ) {
+//            break;
+//        }
+//        const unsigned char *data = dialogIcons[count++];
+//        if( data == 0x00 ) {
+//            break;
+//        }
+//        int length = atoi((const char *)lengthAsString);
+//
+//        // Create the icon and add to the hashmap
+//        id imageData = msg(c("NSData"), s("dataWithBytes:length:"), data, length);
+//        id dialogImage = ALLOC("NSImage");
+//        msg(dialogImage, s("initWithData:"), imageData);
+//        hashmap_put(hashmap, (const char *)name, strlen((const char *)name), dialogImage);
+//    }
+//
+//}
+//
+//void processUserDialogIcons(struct Application *app) {
+//
+//	// Allocate the Dialog icon hashmap
+//	if( 0 != hashmap_create((const unsigned)4, &dialogIconCache)) {
+//	   // Couldn't allocate map
+//	   Fatal(app, "Not enough memory to allocate dialogIconCache!");
+//	   return;
+//	}
+//
+//	processDialogIcons(&dialogIconCache, defaultDialogIcons);
+//	processDialogIcons(&dialogIconCache, userDialogIcons);
+//
+//}
 
 
-void Run(struct Application *app) {
+void Run(struct Application *app, int argc, char **argv) {
 
 	// Process window decorations
 	processDecorations(app);
@@ -1649,16 +1322,15 @@ void Run(struct Application *app) {
 		msg(wkwebview, s("setValue:forKey:"), msg(c("NSNumber"), s("numberWithBool:"), 0), str("drawsBackground"));
 	}
 
-	// If we have an application menu, process it
-	if( app->applicationMenu != NULL ) {
-	    msg(msg(c("NSApplication"), s("sharedApplication")), s("setMainMenu:"), app->applicationMenu->menu);
-	}
-
-	// Setup initial trays
-    ShowTrayMenusInStore(app->trayMenuStore);
+//	// If we have an application menu, process it
+//	if( app->applicationMenu != NULL ) {
+//	    msg(msg(c("NSApplication"), s("sharedApplication")), s("setMainMenu:"), app->applicationMenu->menu);
+//	}
 
 	// Process dialog icons
-	processUserDialogIcons(app);
+//	processUserDialogIcons(app);
+
+	app->running = true;
 
 	// Finally call run
 	Debug(app, "Run called");
@@ -1668,7 +1340,7 @@ void Run(struct Application *app) {
 }
 
 
-void* NewApplication(const char *title, int width, int height, int resizable, int devtools, int fullscreen, int startHidden, int logLevel) {
+struct Application* NewApplication(const char *title, int width, int height, int resizable, int devtools, int fullscreen, int startHidden, int logLevel) {
 
     // Load the tray icons
     LoadTrayIcons();
@@ -1709,13 +1381,10 @@ void* NewApplication(const char *title, int width, int height, int resizable, in
 	result->delegate = NULL;
 
 	// Menu
-	result->applicationMenu = NULL;
-
-	// Tray
-	result->trayMenuStore = NewTrayMenuStore();
+	result->menuManager = NewMenuManager();
 
 	// Context Menus
-	result->contextMenuStore = NewContextMenuStore();
+//	result->contextMenuStore = NewContextMenuStore();
 
 	// Window Appearance
 	result->titlebarAppearsTransparent = 0;
@@ -1723,8 +1392,7 @@ void* NewApplication(const char *title, int width, int height, int resizable, in
 
 	result->sendMessageToBackend = (ffenestriCallback) messageFromWindowCallback;
 
+	result->running = false;
+
     return (void*) result;
 }
-
-
-#endif

@@ -11,3 +11,7 @@ License: http://git.ozlabs.org/?p=ccan;a=blob;f=licenses/BSD-MIT;h=89de354795ec7
 ## hashmap
 Homepage: https://github.com/sheredom/hashmap.h
 License: https://github.com/sheredom/hashmap.h/blob/master/LICENSE
+
+## utf8.h
+Homepage: https://github.com/sheredom/utf8.h
+License: https://github.com/sheredom/utf8.h/blob/master/LICENSE

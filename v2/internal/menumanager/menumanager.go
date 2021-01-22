@@ -13,6 +13,9 @@ type Manager struct {
 	menuItemIDCounter  *counter.Counter
 	processedMenuItems map[*menu.MenuItem]*ProcessedMenuItem
 
+	// Menus
+	menuIDCounter *counter.Counter
+
 	// Map wails menus to internal menus
 	trayMenuMap       map[*menu.TrayMenu]*TrayMenu
 	trayMenuIDCounter *counter.Counter
@@ -22,6 +25,7 @@ func NewManager() *Manager {
 	return &Manager{
 		trayMenuMap:        make(map[*menu.TrayMenu]*TrayMenu),
 		trayMenuIDCounter:  counter.NewCounter(0),
+		menuIDCounter:      counter.NewCounter(0),
 		menuItemMap:        make(map[string]*menu.MenuItem),
 		menuItemIDCounter:  counter.NewCounter(0),
 		processedMenuItems: make(map[*menu.MenuItem]*ProcessedMenuItem),

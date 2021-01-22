@@ -44,6 +44,8 @@
   ( vec_splice_(vec_unpack_(v), start, count),\
     (v)->length -= (count) )
 
+#define vec_size(v) \
+    (v)->length
 
 #define vec_swapsplice(v, start, count)\
   ( vec_swapsplice_(vec_unpack_(v), start, count),\

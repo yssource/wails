@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.17)
+project(test_app)
+
+set(CMAKE_CXX_STANDARD 14)
+set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address -g")
+set (CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address -fsanitize=leak -g")
+
+add_executable(test_app test.c)
+add_library(menus STATIC ../menu_manager.c ../menu.c ../menu_tray.c ../menu_item.c )
+add_library(common STATIC ../common.c ../utf8.h)
+add_library(json STATIC ../json.c)
+add_library(vec STATIC ../vec.c)
+
+if( CMAKE_HOST_APPLE )
+    find_library(WEBKIT WebKit)
+    add_library(runtime STATIC ../runtime_darwin.c)
+    add_library(ffenestri STATIC ../ffenestri_darwin.c)
+    add_library(defaulticons STATIC ../defaultdialogicons_darwin.c)
+    add_library(platform STATIC ../menu_darwin.c)
+    target_link_libraries(test_app objc ${WEBKIT} ffenestri platform runtime)
+endif()
+
+target_link_libraries(test_app vec json common menus)
+include_directories(..)
+include_directories(.)

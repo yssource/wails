@@ -16,6 +16,11 @@ TrayMenuStore* NewTrayMenuStore() {
         ABORT("[NewTrayMenuStore] Not enough memory to allocate trayMenuMap!");
     }
 
+    // Allocate menu item store
+    if( 0 != hashmap_create((const unsigned)8, &result->menuItemMap)) {
+        ABORT("[NewTrayMenuStore] Not enough memory to allocate menuItemMap!");
+    }
+
     return result;
 }
 
@@ -29,7 +34,7 @@ void DumpTrayMenuStore(TrayMenuStore* store) {
 }
 
 void AddTrayMenuToStore(TrayMenuStore* store, const char* menuJSON) {
-    TrayMenu* newMenu = NewTrayMenu(menuJSON);
+    TrayMenu* newMenu = NewTrayMenu(menuJSON, (struct TrayMenuStore *) store);
 
     //TODO: check if there is already an entry for this menu
     hashmap_put(&store->trayMenuMap, newMenu->ID, strlen(newMenu->ID), newMenu);
@@ -65,6 +70,9 @@ void DeleteTrayMenuStore(TrayMenuStore *store) {
 
     // Destroy tray menu map
     hashmap_destroy(&store->trayMenuMap);
+
+    // Destroy menu item map
+    hashmap_destroy(&store->menuItemMap);
 }
 
 TrayMenu* GetTrayMenuFromStore(TrayMenuStore* store, const char* menuID) {
@@ -81,6 +89,15 @@ TrayMenu* MustGetTrayMenuFromStore(TrayMenuStore* store, const char* menuID) {
     return result;
 }
 
+id GetMenuItemFromStore(TrayMenuStore* store, const char* menuItemID) {
+    return hashmap_get(&store->menuItemMap, menuItemID, strlen(menuItemID));
+}
+
+void SaveMenuItemInStore(TrayMenuStore* store, const char* menuItemID, id nsmenuitem) {
+    hashmap_put(&store->menuItemMap, menuItemID, strlen(menuItemID), nsmenuitem);
+}
+
+
 void UpdateTrayMenuLabelInStore(TrayMenuStore* store, const char* JSON) {
     // Parse the JSON
     JsonNode *parsedUpdate = mustParseJSON(JSON);
@@ -96,7 +113,7 @@ void UpdateTrayMenuLabelInStore(TrayMenuStore* store, const char* JSON) {
 }
 
 TrayMenu* UpdateTrayMenuInStore(TrayMenuStore* store, const char* menuJSON) {
-    TrayMenu* newMenu = NewTrayMenu(menuJSON);
+    TrayMenu* newMenu = NewTrayMenu(menuJSON, (struct TrayMenuStore *) store);
 
     // Get the current menu
     TrayMenu *currentMenu = GetTrayMenuFromStore(store, newMenu->ID);
@@ -126,3 +143,8 @@ TrayMenu* UpdateTrayMenuInStore(TrayMenuStore* store, const char* menuJSON) {
     return newMenu;
 
 }
+
+const char* GetContextMenuDataFromStore(TrayMenuStore *store) {
+    return store->contextMenuData;
+}
+

@@ -15,6 +15,12 @@ typedef struct {
     // It maps tray IDs to TrayMenu*
     struct hashmap_s trayMenuMap;
 
+    // This is our menu item map
+    // It maps menu Item IDs to NSMenuItems
+    struct hashmap_s menuItemMap;
+
+    const char* contextMenuData;
+
 } TrayMenuStore;
 
 TrayMenuStore* NewTrayMenuStore();
@@ -24,6 +30,11 @@ TrayMenu* UpdateTrayMenuInStore(TrayMenuStore* store, const char* menuJSON);
 void ShowTrayMenusInStore(TrayMenuStore* store);
 void DeleteTrayMenuStore(TrayMenuStore* store);
 
+void SaveMenuItemInStore(TrayMenuStore* store, const char* menuItemID, id nsmenuitem);
+
+TrayMenu* GetTrayMenuFromStore(TrayMenuStore* store, const char* menuID);
+id GetMenuItemFromStore(TrayMenuStore* store, const char* menuItemID);
 void UpdateTrayMenuLabelInStore(TrayMenuStore* store, const char* JSON);
+const char* GetContextMenuDataFromStore(TrayMenuStore *store);
 
 #endif //TRAYMENUSTORE_DARWIN_H

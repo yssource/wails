@@ -38,10 +38,16 @@ int freeHashmapItem(void *const context, struct hashmap_element_s *const e) {
 const char* getJSONString(JsonNode *item, const char* key) {
     // Get key
     JsonNode *node = json_find_member(item, key);
-    const char *result = "";
+    const char *result = NULL;
     if ( node != NULL && node->tag == JSON_STRING) {
         result = node->string_;
     }
+    return result;
+}
+
+const char* getJSONStringDefault(JsonNode *item, const char* key, const char* defaultValue) {
+    const char* result = getJSONString(item, key);
+    if ( result == NULL ) result = defaultValue;
     return result;
 }
 
@@ -52,7 +58,7 @@ void ABORT_JSON(JsonNode *node, const char* key) {
 const char* mustJSONString(JsonNode *item, const char* key) {
     JsonNode *member = json_find_member(item, key);
     if ( member == NULL ) {
-        ABORT_JSON(member, key);
+        ABORT_JSON(item, key);
     }
     const char *result = "";
     if ( member != NULL && member->tag == JSON_STRING) {

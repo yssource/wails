@@ -38,8 +38,8 @@ func TestManager_AddTrayMenu(t *testing.T) {
 		{iconLabel, "{\"I\":\"T1\",\"l\":\"test\",\"i\":\"svelte\"}"},
 		{blankLabel, "{\"I\":\"T1\"}"},
 		{blankMenu, "{\"I\":\"T1\"}"},
-		{menuTextItem, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"t\"}]}"},
-		{checkboxItem, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"c\",\"c\":true}]}"},
+		{menuTextItem, "{\"I\":\"T1\",\"m\":{\"I\":\"1\",\"i\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"t\"}]}}"},
+		{checkboxItem, "{\"I\":\"T1\",\"m\":{\"I\":\"1\",\"i\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"c\",\"c\":true}]}}"},
 		{radioGroupItems, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"option 1\",\"t\":\"r\",\"c\":true},{\"I\":\"2\",\"l\":\"option 2\",\"t\":\"r\"},{\"I\":\"3\",\"l\":\"option 3\",\"t\":\"r\"}],\"r\":[{\"Members\":[\"1\",\"2\",\"3\"],\"Length\":3}]}"},
 		{callbackItem, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"Preferences\",\"t\":\"t\",\"C\":true}]}"},
 	}
@@ -60,6 +60,7 @@ func TestManager_CallbackMap(t *testing.T) {
 	simpleLabel := menu.Text("test", nil, nil)
 	simpleLabelWithCallback := menu.Text("test", nil, func(_ *menu.CallbackData) {})
 	checkboxWithCallback := menu.Checkbox("test", true, nil, func(_ *menu.CallbackData) {})
+	submenu := menu.SubMenu("test", menu.NewMenuFromItems(checkboxWithCallback))
 
 	blankMenu := &menu.TrayMenu{Menu: menu.NewMenu()}
 	noCallback := &menu.TrayMenu{Menu: menu.NewMenuFromItems(simpleLabel)}
@@ -67,6 +68,8 @@ func TestManager_CallbackMap(t *testing.T) {
 	duplicateCallbacks := &menu.TrayMenu{Menu: menu.NewMenuFromItems(simpleLabelWithCallback, simpleLabelWithCallback)}
 	twoMenusWithCallbacks := &menu.TrayMenu{Menu: menu.NewMenuFromItems(simpleLabelWithCallback, checkboxWithCallback)}
 	duplicateMenusWithCallbacks := &menu.TrayMenu{Menu: menu.NewMenuFromItems(simpleLabelWithCallback, checkboxWithCallback, simpleLabelWithCallback, checkboxWithCallback)}
+	submenuWithCallback := &menu.TrayMenu{Menu: menu.NewMenuFromItems(submenu)}
+	duplicateSubmenus := &menu.TrayMenu{Menu: menu.NewMenuFromItems(submenu, submenu)}
 
 	tests := []struct {
 		trayMenu  *menu.TrayMenu
@@ -80,6 +83,8 @@ func TestManager_CallbackMap(t *testing.T) {
 		{duplicateCallbacks, 1, 1, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"t\",\"C\":true},{\"I\":\"1\"}]}"},
 		{twoMenusWithCallbacks, 1, 2, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"t\",\"C\":true},{\"I\":\"2\",\"l\":\"test\",\"t\":\"c\",\"c\":true,\"C\":true}]}"},
 		{duplicateMenusWithCallbacks, 1, 2, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"t\",\"C\":true},{\"I\":\"2\",\"l\":\"test\",\"t\":\"c\",\"c\":true,\"C\":true},{\"I\":\"1\"},{\"I\":\"2\"}]}"},
+		{submenuWithCallback, 1, 2, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"S\",\"s\":[{\"I\":\"2\",\"l\":\"test\",\"t\":\"c\",\"c\":true,\"C\":true}]}]}"},
+		{duplicateSubmenus, 1, 2, "{\"I\":\"T1\",\"m\":[{\"I\":\"1\",\"l\":\"test\",\"t\":\"S\",\"s\":[{\"I\":\"2\",\"l\":\"test\",\"t\":\"c\",\"c\":true,\"C\":true}]},{\"I\":\"1\"}]}"},
 	}
 	for _, test := range tests {
 		m := NewManager()

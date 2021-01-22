@@ -20,6 +20,7 @@
 #define strunicode(input) msg(c("NSString"), s("stringWithFormat:"), str("%C"), (unsigned short)input)
 #define cstr(input) (const char *)msg(input, s("UTF8String"))
 #define url(input) msg(c("NSURL"), s("fileURLWithPath:"), str(input))
+#define RELEASE(input) if( input != NULL ) { msg(input, s("release")); }
 
 #define ALLOC(classname) msg(c(classname), s("alloc"))
 #define ALLOC_INIT(classname) msg(msg(c(classname), s("alloc")), s("init"))
@@ -108,6 +109,5 @@ void WebviewIsTransparent(struct Application* app);
 void WindowBackgroundIsTranslucent(struct Application* app);
 void SetTray(struct Application* app, const char *, const char *, const char *);
 //void SetContextMenus(struct Application* app, const char *);
-void AddTrayMenu(struct Application* app, const char *);
 
 #endif

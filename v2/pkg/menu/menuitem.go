@@ -9,6 +9,8 @@ import (
 type MenuItem struct {
 	// Label is what appears as the menu text
 	Label string
+	// AlternateLabel is a secondary label (Used by Mac)
+	AlternateLabel string
 	// Role is a predefined menu type
 	Role Role `json:"Role,omitempty"`
 	// Accelerator holds a representation of a key binding
@@ -21,6 +23,14 @@ type MenuItem struct {
 	Hidden bool
 	// Checked indicates if the item is selected (used by Checkbox and Radio types only)
 	Checked bool
+	// Font to use for the menu item
+	Font string
+	// Font to use for the menu item
+	FontSize int
+	// RGBA is the colour of the menu item
+	RGBA string
+	// Image is an image for the menu item (base64 string)
+	Image string
 	// Submenu contains a list of menu items that will be shown as a submenu
 	//SubMenu []*MenuItem `json:"SubMenu,omitempty"`
 	SubMenu *Menu `json:"SubMenu,omitempty"`

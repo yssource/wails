@@ -7,11 +7,10 @@ import (
 )
 
 type TrayMenu struct {
-	ID          string               `json:"I"`
-	Label       string               `json:"l,omitempty"`
-	Icon        string               `json:"i,omitempty"`
-	Menu        []*ProcessedMenuItem `json:"m,omitempty"`
-	RadioGroups []*RadioGroup        `json:"r,omitempty"`
+	ID    string         `json:"I"`
+	Label string         `json:"l,omitempty"`
+	Icon  string         `json:"i,omitempty"`
+	Menu  *ProcessedMenu `json:"m,omitempty"`
 }
 
 func (t *TrayMenu) AsJSON() (string, error) {
@@ -24,14 +23,11 @@ func (t *TrayMenu) AsJSON() (string, error) {
 
 func (m *Manager) newTrayMenu(trayMenu *menu.TrayMenu) *TrayMenu {
 
-	wailsMenu := m.NewWailsMenu(trayMenu.Menu)
-
 	result := TrayMenu{
-		ID:          m.generateTrayID(),
-		Label:       trayMenu.Label,
-		Icon:        trayMenu.Icon,
-		Menu:        wailsMenu.Menu,
-		RadioGroups: wailsMenu.RadioGroups,
+		ID:    m.generateTrayID(),
+		Label: trayMenu.Label,
+		Icon:  trayMenu.Icon,
+		Menu:  m.ProcessMenu(trayMenu.Menu),
 	}
 
 	return &result

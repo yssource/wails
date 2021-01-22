@@ -30,15 +30,15 @@ extern void Fullscreen(struct Application*);
 extern void UnFullscreen(struct Application*);
 extern void ToggleFullscreen(struct Application*);
 extern void DisableFrame(struct Application*);
-extern void OpenDialog(struct Application*, char *callbackID, char *title, char *filters, char *defaultFilename, char *defaultDir, int allowFiles, int allowDirs, int allowMultiple, int showHiddenFiles, int canCreateDirectories, int resolvesAliases, int treatPackagesAsDirectories);
-extern void SaveDialog(struct Application*, char *callbackID, char *title, char *filters, char *defaultFilename, char *defaultDir, int showHiddenFiles, int canCreateDirectories, int treatPackagesAsDirectories);
-extern void MessageDialog(struct Application*, char *callbackID, char *type, char *title, char *message, char *icon, char *button1, char *button2, char *button3, char *button4, char *defaultButton, char *cancelButton);
-extern void DarkModeEnabled(struct Application*, char *callbackID);
+extern void OpenDialog(struct Application*, const char *callbackID, const char *title, const char *filters, const char *defaultFilename, const char *defaultDir, int allowFiles, int allowDirs, int allowMultiple, int showHiddenFiles, int canCreateDirectories, int resolvesAliases, int treatPackagesAsDirectories);
+extern void SaveDialog(struct Application*, const char *callbackID, const char *title, const char *filters, const char *defaultFilename, const char *defaultDir, int showHiddenFiles, int canCreateDirectories, int treatPackagesAsDirectories);
+extern void MessageDialog(struct Application*, const char *callbackID, const char *type, const char *title, const char *message, const char *icon, const char *button1, const char *button2, const char *button3, const char *button4, const char *defaultButton, const char *cancelButton);
+extern void DarkModeEnabled(struct Application*, const char *callbackID);
 extern void SetApplicationMenu(struct Application*, const char *);
 extern void AddTrayMenu(struct Application*, const char *menuTrayJSON);
 extern void SetTrayMenu(struct Application*, const char *menuTrayJSON);
 extern void UpdateTrayMenuLabel(struct Application*, const char* JSON);
-extern void AddContextMenu(struct Application*, char *contextMenuJSON);
-extern void UpdateContextMenu(struct Application*, char *contextMenuJSON);
+extern void AddContextMenu(struct Application*, const char *contextMenuJSON);
+extern void UpdateContextMenu(struct Application*, const char *contextMenuJSON);
 
 #endif

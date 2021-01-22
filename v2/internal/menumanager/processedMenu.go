@@ -7,22 +7,67 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 )
 
-type ProcessedMenuItem struct {
+type ProcessedMenu struct {
 	ID string `json:"I"`
+
+	Items       []*ProcessedMenuItem `json:"i,omitempty"`
+	RadioGroups []*RadioGroup        `json:"r,omitempty"`
+}
+
+func (m *Manager) ProcessMenu(menu *menu.Menu) *ProcessedMenu {
+	wm := m.NewWailsMenu(menu)
+
+	if len(wm.Menu) == 0 {
+		return nil
+	}
+
+	return &ProcessedMenu{
+		ID:          m.generateMenuID(),
+		Items:       wm.Menu,
+		RadioGroups: wm.RadioGroups,
+	}
+}
+
+type ProcessedMenuItem struct {
+	// ID of the menu item
+	ID string `json:"I"`
+
 	// Label is what appears as the menu text
 	Label string `json:"l,omitempty"`
+
+	// AlternateLabel is a secondary label (Used by Mac)
+	AlternateLabel string `json:"L,omitempty"`
+
 	// Role is a predefined menu type
 	Role menu.Role `json:"r,omitempty"`
+
 	// Accelerator holds a representation of a key binding
 	Accelerator *keys.Accelerator `json:"a,omitempty"`
+
 	// Type of MenuItem, EG: Checkbox, Text, Separator, Radio, Submenu
 	Type menu.Type `json:"t,omitempty"`
+
+	// Font to use for the menu item
+	Font string `json:"f,omitempty"`
+
+	// Font to use for the menu item
+	FontSize int `json:"F,omitempty"`
+
+	// RGBA is the colour of the menu item
+	RGBA string `json:"R,omitempty"`
+
+	// Image is an image for the menu item (base64 string)
+	Image string `json:"i,omitempty"`
+
 	// Disabled makes the item unselectable
 	Disabled *bool `json:"d,omitempty"`
+
 	// Hidden ensures that the item is not shown in the menu
 	Hidden *bool `json:"h,omitempty"`
+
 	// Checked indicates if the item is selected (used by Checkbox and Radio types only)
 	Checked *bool `json:"c,omitempty"`
+
 	// Submenu contains a list of menu items that will be shown as a submenu
 	//SubMenu []*MenuItem `json:"SubMenu,omitempty"`
 	SubMenu []*ProcessedMenuItem `json:"s,omitempty"`
@@ -31,8 +76,12 @@ type ProcessedMenuItem struct {
 	HasCallback *bool `json:"C,omitempty"`
 }
 
-func (m *Manager) generateMenuID() string {
+func (m *Manager) generateMenuItemID() string {
 	return fmt.Sprintf("%d", m.menuItemIDCounter.Increment())
+}
+
+func (m *Manager) generateMenuID() string {
+	return fmt.Sprintf("%d", m.menuIDCounter.Increment())
 }
 
 func (m *Manager) NewProcessedMenuItem(menuItem *menu.MenuItem) *ProcessedMenuItem {
@@ -44,14 +93,24 @@ func (m *Manager) NewProcessedMenuItem(menuItem *menu.MenuItem) *ProcessedMenuIt
 		return &ProcessedMenuItem{ID: existingMenuItem.ID}
 	}
 
-	ID := m.generateMenuID()
+	ID := m.generateMenuItemID()
 
 	result := &ProcessedMenuItem{
-		ID:          ID,
-		Label:       menuItem.Label,
-		Role:        menuItem.Role,
-		Accelerator: menuItem.Accelerator,
-		Type:        menuItem.Type,
+		ID:             ID,
+		Label:          menuItem.Label,
+		AlternateLabel: menuItem.AlternateLabel,
+		Role:           menuItem.Role,
+		Accelerator:    menuItem.Accelerator,
+		Type:           menuItem.Type,
+		Font:           menuItem.Font,
+		FontSize:       menuItem.FontSize,
+		RGBA:           menuItem.RGBA,
+		Image:          menuItem.Image,
+		Disabled:       nil,
+		Hidden:         nil,
+		Checked:        nil,
+		SubMenu:        nil,
+		HasCallback:    nil,
 	}
 
 	if menuItem.Hidden {

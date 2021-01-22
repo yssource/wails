@@ -10,7 +10,7 @@
 // Global because it's a singleton
 struct hashmap_s trayIconCache;
 
-TrayMenu* NewTrayMenu(const char* menuJSON) {
+TrayMenu* NewTrayMenu(const char* menuJSON, struct TrayMenuStore* store) {
     TrayMenu* result = malloc(sizeof(TrayMenu));
 
 /*
@@ -35,10 +35,8 @@ TrayMenu* NewTrayMenu(const char* menuJSON) {
         JsonNode* radioGroups = getJSONObject(processedJSON, "r");
 
         // Create the menu
-        result->menu = NewMenu(menu, radioGroups);
+        result->menu = NewMenu(menu, radioGroups, store);
         result->menu->menuType = TrayMenuType;
-        result->menu->parentData = (void*) result->ID;
-
     }
 
     // Init tray status bar item
@@ -54,17 +52,6 @@ void DumpTrayMenu(TrayMenu* trayMenu) {
     printf("    ['%s':%p] = { label: '%s', icon: '%s', menu: %p, statusbar: %p  }\n", trayMenu->ID, trayMenu, trayMenu->label, trayMenu->icon, trayMenu->menu, trayMenu->statusbaritem );
 }
 
-
-void UpdateTrayLabel(TrayMenu *trayMenu, const char *label) {
-
-    // Exit early if NULL
-    if( trayMenu->label == NULL ) {
-        return;
-    }
-    // Update button label
-    id statusBarButton = msg(trayMenu->statusbaritem, s("button"));
-    msg(statusBarButton, s("setTitle:"), str(label));
-}
 
 void UpdateTrayIcon(TrayMenu *trayMenu) {
 
@@ -189,14 +176,3 @@ void LoadTrayIcons() {
     }
 }
 
-void UnloadTrayIcons() {
-    // Release the tray cache images
-    if( hashmap_num_entries(&trayIconCache) > 0 ) {
-        if (0!=hashmap_iterate_pairs(&trayIconCache, releaseNSObject, NULL)) {
-            ABORT("failed to release hashmap entries!");
-        }
-    }
-
-    //Free radio groups hashmap
-    hashmap_destroy(&trayIconCache);
-}

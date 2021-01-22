@@ -6,7 +6,7 @@
 #define TRAYMENU_DARWIN_H
 
 #include "common.h"
-#include "menu_darwin.h"
+#include "menu_darwin_old.h"
 
 typedef struct {
 
@@ -20,7 +20,7 @@ typedef struct {
     int trayIconPosition;
 } TrayMenu;
 
-TrayMenu* NewTrayMenu(const char *trayJSON);
+TrayMenu* NewTrayMenu(const char *trayJSON, struct TrayMenuStore* store);
 void DumpTrayMenu(TrayMenu* trayMenu);
 void ShowTrayMenu(TrayMenu* trayMenu);
 void UpdateTrayMenuInPlace(TrayMenu* currentMenu, TrayMenu* newMenu);
