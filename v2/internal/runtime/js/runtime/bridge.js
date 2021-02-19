@@ -779,18 +779,18 @@
 
     function add_css$1() {
     	var style = element("style");
-    	style.id = "svelte-1oysp7o-style";
-    	style.textContent = ".menu.svelte-1oysp7o.svelte-1oysp7o{padding:3px;background-color:#0008;color:#EEF;border-radius:5px;margin-top:5px;position:absolute;backdrop-filter:blur(3px) saturate(160%) contrast(45%) brightness(140%);border:1px solid rgb(88,88,88);box-shadow:0 0 1px rgb(146,146,148) inset}.menuitem.svelte-1oysp7o.svelte-1oysp7o{display:flex;align-items:center;padding:1px 5px}.menuitem.svelte-1oysp7o.svelte-1oysp7o:hover{display:flex;align-items:center;background-color:rgb(57,131,223);padding:1px 5px;border-radius:5px}.menuitem.svelte-1oysp7o img.svelte-1oysp7o{padding-right:5px}";
+    	style.id = "svelte-1ucacnf-style";
+    	style.textContent = ".menu.svelte-1ucacnf.svelte-1ucacnf{padding:5px;background-color:#0008;color:#EEF;border-radius:5px;margin-top:5px;position:absolute;backdrop-filter:blur(3px) saturate(160%) contrast(45%) brightness(140%);border:1px solid rgb(88,88,88);box-shadow:0 0 1px rgb(146,146,148) inset}.menuitem.svelte-1ucacnf.svelte-1ucacnf{display:flex;align-items:center;padding:1px 5px}.menuitem.svelte-1ucacnf.svelte-1ucacnf:hover{display:flex;align-items:center;background-color:rgb(57,131,223);padding:1px 5px;border-radius:5px}.menuitem.svelte-1ucacnf img.svelte-1ucacnf{padding-right:5px}.separator.svelte-1ucacnf.svelte-1ucacnf{padding-top:5px;width:100%;padding-bottom:5px}.separator.svelte-1ucacnf.svelte-1ucacnf:hover{background-color:#0000}";
     	append(document.head, style);
     }
 
     function get_each_context(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[2] = list[i];
+    	child_ctx[3] = list[i];
     	return child_ctx;
     }
 
-    // (8:0) {#if !hidden}
+    // (14:0) {#if visible}
     function create_if_block$1(ctx) {
     	let div;
     	let if_block = /*menu*/ ctx[0].Menu && create_if_block_1(ctx);
@@ -799,7 +799,7 @@
     		c() {
     			div = element("div");
     			if (if_block) if_block.c();
-    			attr(div, "class", "menu svelte-1oysp7o");
+    			attr(div, "class", "menu svelte-1ucacnf");
     		},
     		m(target, anchor) {
     			insert(target, div, anchor);
@@ -826,7 +826,7 @@
     	};
     }
 
-    // (10:4) {#if menu.Menu }
+    // (16:4) {#if menu.Menu }
     function create_if_block_1(ctx) {
     	let each_1_anchor;
     	let each_value = /*menu*/ ctx[0].Menu.Items;
@@ -852,7 +852,7 @@
     			insert(target, each_1_anchor, anchor);
     		},
     		p(ctx, dirty) {
-    			if (dirty & /*menu*/ 1) {
+    			if (dirty & /*click, menu*/ 1) {
     				each_value = /*menu*/ ctx[0].Menu.Items;
     				let i;
 
@@ -882,44 +882,41 @@
     	};
     }
 
-    // (13:12) {#if menuItem.Image }
-    function create_if_block_2(ctx) {
+    // (25:52) 
+    function create_if_block_4(ctx) {
     	let div;
-    	let img;
-    	let img_src_value;
 
     	return {
     		c() {
     			div = element("div");
-    			img = element("img");
-    			attr(img, "alt", "");
-    			if (img.src !== (img_src_value = "data:image/png;base64," + /*menuItem*/ ctx[2].Image)) attr(img, "src", img_src_value);
-    			attr(img, "class", "svelte-1oysp7o");
+    			div.innerHTML = `<hr/>`;
+    			attr(div, "class", "separator svelte-1ucacnf");
     		},
     		m(target, anchor) {
     			insert(target, div, anchor);
-    			append(div, img);
     		},
-    		p(ctx, dirty) {
-    			if (dirty & /*menu*/ 1 && img.src !== (img_src_value = "data:image/png;base64," + /*menuItem*/ ctx[2].Image)) {
-    				attr(img, "src", img_src_value);
-    			}
-    		},
+    		p: noop,
     		d(detaching) {
     			if (detaching) detach(div);
     		}
     	};
     }
 
-    // (11:8) {#each menu.Menu.Items as menuItem}
-    function create_each_block(ctx) {
+    // (18:12) {#if menuItem.Type === "Text" }
+    function create_if_block_2(ctx) {
     	let div1;
     	let t0;
     	let div0;
-    	let t1_value = /*menuItem*/ ctx[2].Label + "";
+    	let t1_value = /*menuItem*/ ctx[3].Label + "";
     	let t1;
     	let t2;
-    	let if_block = /*menuItem*/ ctx[2].Image && create_if_block_2(ctx);
+    	let mounted;
+    	let dispose;
+    	let if_block = /*menuItem*/ ctx[3].Image && create_if_block_3(ctx);
+
+    	function click_handler() {
+    		return /*click_handler*/ ctx[2](/*menuItem*/ ctx[3]);
+    	}
 
     	return {
     		c() {
@@ -930,7 +927,7 @@
     			t1 = text(t1_value);
     			t2 = space();
     			attr(div0, "class", "menulabel");
-    			attr(div1, "class", "menuitem svelte-1oysp7o");
+    			attr(div1, "class", "menuitem svelte-1ucacnf");
     		},
     		m(target, anchor) {
     			insert(target, div1, anchor);
@@ -939,13 +936,20 @@
     			append(div1, div0);
     			append(div0, t1);
     			append(div1, t2);
+
+    			if (!mounted) {
+    				dispose = listen(div1, "click", click_handler);
+    				mounted = true;
+    			}
     		},
-    		p(ctx, dirty) {
-    			if (/*menuItem*/ ctx[2].Image) {
+    		p(new_ctx, dirty) {
+    			ctx = new_ctx;
+
+    			if (/*menuItem*/ ctx[3].Image) {
     				if (if_block) {
     					if_block.p(ctx, dirty);
     				} else {
-    					if_block = create_if_block_2(ctx);
+    					if_block = create_if_block_3(ctx);
     					if_block.c();
     					if_block.m(div1, t0);
     				}
@@ -954,18 +958,93 @@
     				if_block = null;
     			}
 
-    			if (dirty & /*menu*/ 1 && t1_value !== (t1_value = /*menuItem*/ ctx[2].Label + "")) set_data(t1, t1_value);
+    			if (dirty & /*menu*/ 1 && t1_value !== (t1_value = /*menuItem*/ ctx[3].Label + "")) set_data(t1, t1_value);
     		},
     		d(detaching) {
     			if (detaching) detach(div1);
     			if (if_block) if_block.d();
+    			mounted = false;
+    			dispose();
+    		}
+    	};
+    }
+
+    // (20:12) {#if menuItem.Image }
+    function create_if_block_3(ctx) {
+    	let div;
+    	let img;
+    	let img_src_value;
+
+    	return {
+    		c() {
+    			div = element("div");
+    			img = element("img");
+    			attr(img, "alt", "");
+    			if (img.src !== (img_src_value = "data:image/png;base64," + /*menuItem*/ ctx[3].Image)) attr(img, "src", img_src_value);
+    			attr(img, "class", "svelte-1ucacnf");
+    		},
+    		m(target, anchor) {
+    			insert(target, div, anchor);
+    			append(div, img);
+    		},
+    		p(ctx, dirty) {
+    			if (dirty & /*menu*/ 1 && img.src !== (img_src_value = "data:image/png;base64," + /*menuItem*/ ctx[3].Image)) {
+    				attr(img, "src", img_src_value);
+    			}
+    		},
+    		d(detaching) {
+    			if (detaching) detach(div);
+    		}
+    	};
+    }
+
+    // (17:8) {#each menu.Menu.Items as menuItem}
+    function create_each_block(ctx) {
+    	let if_block_anchor;
+
+    	function select_block_type(ctx, dirty) {
+    		if (/*menuItem*/ ctx[3].Type === "Text") return create_if_block_2;
+    		if (/*menuItem*/ ctx[3].Type === "Separator") return create_if_block_4;
+    	}
+
+    	let current_block_type = select_block_type(ctx);
+    	let if_block = current_block_type && current_block_type(ctx);
+
+    	return {
+    		c() {
+    			if (if_block) if_block.c();
+    			if_block_anchor = empty();
+    		},
+    		m(target, anchor) {
+    			if (if_block) if_block.m(target, anchor);
+    			insert(target, if_block_anchor, anchor);
+    		},
+    		p(ctx, dirty) {
+    			if (current_block_type === (current_block_type = select_block_type(ctx)) && if_block) {
+    				if_block.p(ctx, dirty);
+    			} else {
+    				if (if_block) if_block.d(1);
+    				if_block = current_block_type && current_block_type(ctx);
+
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			}
+    		},
+    		d(detaching) {
+    			if (if_block) {
+    				if_block.d(detaching);
+    			}
+
+    			if (detaching) detach(if_block_anchor);
     		}
     	};
     }
 
     function create_fragment$1(ctx) {
     	let if_block_anchor;
-    	let if_block = !/*hidden*/ ctx[1] && create_if_block$1(ctx);
+    	let if_block = /*visible*/ ctx[1] && create_if_block$1(ctx);
 
     	return {
     		c() {
@@ -977,7 +1056,7 @@
     			insert(target, if_block_anchor, anchor);
     		},
     		p(ctx, [dirty]) {
-    			if (!/*hidden*/ ctx[1]) {
+    			if (/*visible*/ ctx[1]) {
     				if (if_block) {
     					if_block.p(ctx, dirty);
     				} else {
@@ -999,23 +1078,29 @@
     	};
     }
 
+    function click(id) {
+    	console.log("MenuItem", id, "pressed");
+    }
+
     function instance$1($$self, $$props, $$invalidate) {
     	let { menu } = $$props;
-    	let { hidden = true } = $$props;
+    	console.log({ menu });
+    	let { visible = false } = $$props;
+    	const click_handler = menuItem => click(menuItem.ID);
 
     	$$self.$$set = $$props => {
     		if ("menu" in $$props) $$invalidate(0, menu = $$props.menu);
-    		if ("hidden" in $$props) $$invalidate(1, hidden = $$props.hidden);
+    		if ("visible" in $$props) $$invalidate(1, visible = $$props.visible);
     	};
 
-    	return [menu, hidden];
+    	return [menu, visible, click_handler];
     }
 
     class Menu extends SvelteComponent {
     	constructor(options) {
     		super();
-    		if (!document.getElementById("svelte-1oysp7o-style")) add_css$1();
-    		init(this, options, instance$1, create_fragment$1, safe_not_equal, { menu: 0, hidden: 1 });
+    		if (!document.getElementById("svelte-1ucacnf-style")) add_css$1();
+    		init(this, options, instance$1, create_fragment$1, safe_not_equal, { menu: 0, visible: 1 });
     	}
     }
 
@@ -1030,7 +1115,7 @@
     	append(document_1.head, style);
     }
 
-    // (47:4) {#if tray.ProcessedMenu }
+    // (48:4) {#if tray.ProcessedMenu }
     function create_if_block$2(ctx) {
     	let menu;
     	let current;
@@ -1038,7 +1123,7 @@
     	menu = new Menu({
     			props: {
     				menu: /*tray*/ ctx[0].ProcessedMenu,
-    				hidden: /*hidden*/ ctx[1]
+    				visible: /*visible*/ ctx[1]
     			}
     		});
 
@@ -1053,7 +1138,7 @@
     		p(ctx, dirty) {
     			const menu_changes = {};
     			if (dirty & /*tray*/ 1) menu_changes.menu = /*tray*/ ctx[0].ProcessedMenu;
-    			if (dirty & /*hidden*/ 2) menu_changes.hidden = /*hidden*/ ctx[1];
+    			if (dirty & /*visible*/ 2) menu_changes.visible = /*visible*/ ctx[1];
     			menu.$set(menu_changes);
     		},
     		i(local) {
@@ -1157,6 +1242,7 @@
     function clickOutside(node) {
     	const handleClick = event => {
     		if (node && !node.contains(event.target) && !event.defaultPrevented) {
+    			console.log("click outside of node");
     			node.dispatchEvent(new CustomEvent("click_outside", node));
     		}
     	};
@@ -1171,7 +1257,7 @@
     }
 
     function instance$2($$self, $$props, $$invalidate) {
-    	let hidden;
+    	let visible;
     	let $selectedMenu;
     	component_subscribe($$self, selectedMenu, $$value => $$invalidate(4, $selectedMenu = $$value));
     	let { tray = null } = $$props;
@@ -1194,11 +1280,11 @@
 
     	$$self.$$.update = () => {
     		if ($$self.$$.dirty & /*$selectedMenu, tray*/ 17) {
-    			$$invalidate(1, hidden = $selectedMenu !== tray);
+    			$$invalidate(1, visible = $selectedMenu === tray);
     		}
     	};
 
-    	return [tray, hidden, closeMenu, trayClicked, $selectedMenu];
+    	return [tray, visible, closeMenu, trayClicked, $selectedMenu];
     }
 
     class TrayMenu extends SvelteComponent {

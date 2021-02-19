@@ -4,8 +4,9 @@ package app
 
 import (
 	"flag"
-	"github.com/wailsapp/wails/v2/pkg/logger"
 	"strings"
+
+	"github.com/wailsapp/wails/v2/pkg/logger"
 )
 
 // Init initialises the application for a debug environment

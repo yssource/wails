@@ -20,6 +20,7 @@ require (
 	github.com/tdewolff/minify v2.3.6+incompatible
 	github.com/tdewolff/parse v2.3.4+incompatible // indirect
 	github.com/tdewolff/test v1.0.6 // indirect
+	github.com/wzshiming/ctc v1.2.3 // indirect
 	github.com/xyproto/xpm v1.2.1
 	golang.org/x/net v0.0.0-20200822124328-c89045814202
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a

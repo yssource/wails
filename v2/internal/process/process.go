@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"os"
 	"os/exec"
 
@@ -9,18 +10,16 @@ import (
 
 // Process defines a process that can be executed
 type Process struct {
-	logger      *clilogger.CLILogger
-	cmd         *exec.Cmd
-	exitChannel chan bool
-	Running     bool
+	logger  *clilogger.CLILogger
+	cmd     *exec.Cmd
+	running bool
 }
 
 // NewProcess creates a new process struct
-func NewProcess(logger *clilogger.CLILogger, cmd string, args ...string) *Process {
+func NewProcess(ctx context.Context, logger *clilogger.CLILogger, cmd string, args ...string) *Process {
 	result := &Process{
-		logger:      logger,
-		cmd:         exec.Command(cmd, args...),
-		exitChannel: make(chan bool, 1),
+		logger: logger,
+		cmd:    exec.CommandContext(ctx, cmd, args...),
 	}
 	result.cmd.Stdout = os.Stdout
 	result.cmd.Stderr = os.Stderr
@@ -35,30 +34,30 @@ func (p *Process) Start() error {
 		return err
 	}
 
-	p.Running = true
+	p.running = true
 
-	go func(cmd *exec.Cmd, running *bool, logger *clilogger.CLILogger, exitChannel chan bool) {
-		logger.Println("Starting process (PID: %d)", cmd.Process.Pid)
-		cmd.Wait()
-		logger.Println("Exiting process (PID: %d)", cmd.Process.Pid)
-		*running = false
-		exitChannel <- true
-	}(p.cmd, &p.Running, p.logger, p.exitChannel)
+	go func(p *Process) {
+		p.logger.Println("Starting process (PID: %d)", p.cmd.Process.Pid)
+		err := p.cmd.Wait()
+		if err != nil {
+			p.running = false
+			p.logger.Println("Process failed to run: %s", err.Error())
+			return
+		}
+		p.logger.Println("Exiting process (PID: %d)", p.cmd.Process.Pid)
+	}(p)
 
 	return nil
 }
 
 // Kill the process
 func (p *Process) Kill() error {
-	if !p.Running {
-		return nil
+	if p.running {
+		println("Calling kill")
+		p.running = false
+		return p.cmd.Process.Kill()
 	}
-	err := p.cmd.Process.Kill()
-
-	// Wait for command to exit properly
-	<-p.exitChannel
-
-	return err
+	return nil
 }
 
 // PID returns the process PID

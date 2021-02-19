@@ -1,6 +1,7 @@
 package dev
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -10,14 +11,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/wailsapp/wails/v2/pkg/commands/build"
+
+	"github.com/wailsapp/wails/v2/internal/process"
+
+	"github.com/wzshiming/ctc"
+
+	"github.com/wailsapp/wails/v2/internal/fs"
 
 	"github.com/fsnotify/fsnotify"
+
 	"github.com/leaanthony/clir"
-	"github.com/wailsapp/wails/v2/internal/fs"
-	"github.com/wailsapp/wails/v2/internal/process"
 	"github.com/wailsapp/wails/v2/pkg/clilogger"
-	"github.com/wailsapp/wails/v2/pkg/commands/build"
 )
 
 // AddSubcommand adds the `dev` command for the Wails application
@@ -44,212 +49,262 @@ func AddSubcommand(app *clir.Cli, w io.Writer) error {
 		app.PrintBanner()
 
 		// TODO: Check you are in a project directory
-
-		watcher, err := fsnotify.NewWatcher()
-		if err != nil {
-			return err
-		}
-		defer watcher.Close()
-
-		var debugBinaryProcess *process.Process = nil
-		var buildFrontend bool = false
 		var extensionsThatTriggerARebuild = strings.Split(extensions, ",")
 
-		// Setup signal handler
-		quitChannel := make(chan os.Signal, 1)
-		signal.Notify(quitChannel, os.Interrupt, os.Kill, syscall.SIGTERM)
-
-		debounceQuit := make(chan bool, 1)
-
-		// Do initial build
-		logger.Println("Building application for development...")
-		debugBinaryProcess, err = restartApp(logger, "dev", ldflags, compilerCommand, debugBinaryProcess)
-		if err != nil {
-			return err
-		}
-		go debounce(100*time.Millisecond, watcher.Events, debounceQuit, func(event fsnotify.Event) {
-			// logger.Println("event: %+v", event)
-
-			// Check for new directories
-			if event.Op&fsnotify.Create == fsnotify.Create {
-				// If this is a folder, add it to our watch list
-				if fs.DirExists(event.Name) {
-					if !strings.Contains(event.Name, "node_modules") {
-						err := watcher.Add(event.Name)
-						if err != nil {
-							logger.Fatal("%s", err.Error())
-						}
-						logger.Println("Watching directory: %s", event.Name)
-					}
-				}
-				return
-			}
-
-			// Check for file writes
-			if event.Op&fsnotify.Write == fsnotify.Write {
-
-				logger.Println("modified file: %s", event.Name)
-				var rebuild bool = false
-
-				// Iterate all file patterns
-				for _, pattern := range extensionsThatTriggerARebuild {
-					rebuild = strings.HasSuffix(event.Name, pattern)
-					if err != nil {
-						logger.Fatal(err.Error())
-					}
-					if rebuild {
-						// Only build frontend when the file isn't a Go file
-						buildFrontend = !strings.HasSuffix(event.Name, "go")
-						break
-					}
-				}
-
-				if !rebuild {
-					logger.Println("Filename change: %s did not match extension list (%s)", event.Name, extensions)
-					return
-				}
-
-				logger.Println("Partial build triggered: %s updated", event.Name)
-
-				// Do a rebuild
-
-				// Try and build the app
-				newBinaryProcess, err := restartApp(logger, "dev", ldflags, compilerCommand, debugBinaryProcess)
-				if err != nil {
-					fmt.Printf("Error during build: %s", err.Error())
-					return
-				}
-				// If we have a new process, save it
-				if newBinaryProcess != nil {
-					debugBinaryProcess = newBinaryProcess
-				}
-
-			}
-		})
-
-		// Get project dir
-		dir, err := os.Getwd()
+		reloader, err := NewReloader(logger, extensionsThatTriggerARebuild, ldflags, compilerCommand)
 		if err != nil {
 			return err
 		}
 
-		// Get all subdirectories
-		dirs, err := fs.GetSubdirectories(dir)
+		// Start
+		err = reloader.Start()
 		if err != nil {
-			return err
+			println("ERRRRRRRRRR: %+v", err)
 		}
 
-		// Setup a watcher for non-node_modules directories
-		dirs.Each(func(dir string) {
-			if strings.Contains(dir, "node_modules") {
-				return
-			}
-			logger.Println("Watching directory: %s", dir)
-			err = watcher.Add(dir)
-			if err != nil {
-				logger.Fatal(err.Error())
-			}
-		})
+		logger.Println("\nDevelopment mode exited")
 
-		// Wait until we get a quit signal
-		quit := false
-		for quit == false {
-			select {
-			case <-quitChannel:
-				println("Caught quit")
-				// Notify debouncer to quit
-				debounceQuit <- true
-				quit = true
-			}
-		}
-
-		// Kill the current program if running
-		if debugBinaryProcess != nil {
-			err := debugBinaryProcess.Kill()
-			if err != nil {
-				return err
-			}
-		}
-
-		logger.Println("Development mode exited")
-
-		return nil
+		return err
 	})
 
 	return nil
 }
 
-// Credit: https://drailing.net/2018/01/debounce-function-for-golang/
-func debounce(interval time.Duration, input chan fsnotify.Event, quitChannel chan bool, cb func(arg fsnotify.Event)) {
-	var item fsnotify.Event
-	timer := time.NewTimer(interval)
-exit:
+type Reloader struct {
+
+	// Main context
+	ctx context.Context
+
+	// Signal context
+	signalContext context.Context
+
+	// notify
+	watcher *fsnotify.Watcher
+
+	// Logger
+	logger *clilogger.CLILogger
+
+	// Extensions to listen for
+	extensionsThatTriggerARebuild []string
+
+	// The binary we are running
+	binary *process.Process
+
+	// options
+	ldflags  string
+	compiler string
+}
+
+func NewReloader(logger *clilogger.CLILogger, extensionsThatTriggerARebuild []string, ldFlags string, compiler string) (*Reloader, error) {
+	var result Reloader
+
+	// Create context
+	result.ctx = context.Background()
+
+	// Signal context (we don't need cancel)
+	signalContext, _ := signal.NotifyContext(result.ctx, os.Interrupt, os.Kill, syscall.SIGTERM)
+	result.signalContext = signalContext
+
+	// Create watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+	result.watcher = watcher
+
+	// Logger
+	result.logger = logger
+
+	// Extensions
+	result.extensionsThatTriggerARebuild = extensionsThatTriggerARebuild
+
+	// Options
+	result.ldflags = ldFlags
+	result.compiler = compiler
+
+	return &result, nil
+}
+
+func (r *Reloader) Start() error {
+
+	err := r.rebuildBinary()
+	if err != nil {
+		return err
+	}
+
+	// Get project dir
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Get all subdirectories
+	dirs, err := fs.GetSubdirectories(dir)
+	if err != nil {
+		return err
+	}
+
+	// Setup a watcher for non-node_modules directories
+	r.logger.Println("Watching (sub)directories: %s", dir)
+
+	dirs.Each(func(dir string) {
+		if strings.Contains(dir, "node_modules") {
+			return
+		}
+		err = r.watcher.Add(dir)
+		if err != nil {
+			r.logger.Fatal(err.Error())
+		}
+	})
+
+	// Main loop
 	for {
 		select {
-		case item = <-input:
-			timer.Reset(interval)
-		case <-timer.C:
-			if item.Name != "" {
-				cb(item)
+		case <-r.signalContext.Done():
+			if r.binary != nil {
+				println("Binary is not nil - kill")
+				return r.binary.Kill()
 			}
-		case <-quitChannel:
-			break exit
+			return nil
+		case event := <-r.watcher.Events:
+			err := r.processWatcherEvent(event)
+			if err != nil {
+				println("error from processWatcherEvent. Calling cancel()")
+				println("Calling kill")
+				return r.binary.Kill()
+			}
 		}
 	}
 }
 
-func restartApp(logger *clilogger.CLILogger, outputType string, ldflags string, compilerCommand string, debugBinaryProcess *process.Process) (*process.Process, error) {
+func (r *Reloader) processWatcherEvent(event fsnotify.Event) error {
 
-	appBinary, err := buildApp(logger, outputType, ldflags, compilerCommand)
-	println()
-	if err != nil {
-		logger.Fatal(err.Error())
-		return nil, errors.Wrap(err, "Build Failed:")
+	// Check for new directories
+	if event.Op&fsnotify.Create == fsnotify.Create {
+		// If this is a folder, add it to our watch list
+		if fs.DirExists(event.Name) {
+			if !strings.Contains(event.Name, "node_modules") {
+				err := r.watcher.Add(event.Name)
+				if err != nil {
+					return err
+				}
+				r.logger.Println("Watching directory: %s", event.Name)
+			}
+		}
+		return nil
 	}
-	logger.Println("Build new binary: %s", appBinary)
 
-	// Kill existing binary if need be
-	if debugBinaryProcess != nil {
-		killError := debugBinaryProcess.Kill()
+	// Check for file writes
+	if event.Op&fsnotify.Write == fsnotify.Write {
 
-		if killError != nil {
-			logger.Fatal("Unable to kill debug binary (PID: %d)!", debugBinaryProcess.PID())
+		var rebuild bool
+
+		// Iterate all file patterns
+		for _, pattern := range r.extensionsThatTriggerARebuild {
+			if strings.HasSuffix(event.Name, pattern) {
+				rebuild = true
+			}
 		}
 
-		debugBinaryProcess = nil
+		if !rebuild {
+			return nil
+		}
+
+		r.logger.Println("\n%s[Build triggered] %s %s", ctc.ForegroundGreen|ctc.ForegroundBright, event.Name, ctc.Reset)
+
+		return r.rebuildBinary()
+	}
+	return nil
+}
+
+func (r *Reloader) rebuildBinary() error {
+
+	// rebuild binary
+	binary, err := r.buildApp()
+	if err != nil {
+		return err
 	}
 
-	// TODO: Generate `backend.js`
+	// Kill current binary if running
+	if r.binary != nil {
+		err = r.binary.Kill()
+		if err != nil {
+			return err
+		}
+	}
 
-	// Start up new binary
-	newProcess := process.NewProcess(logger, appBinary)
+	newProcess := process.NewProcess(r.ctx, r.logger, binary)
 	err = newProcess.Start()
 	if err != nil {
-		// Remove binary
-		deleteError := fs.DeleteFile(appBinary)
-		if deleteError != nil {
-			logger.Fatal("Unable to delete app binary: " + appBinary)
-		}
-		logger.Fatal("Unable to start application: %s", err.Error())
+		return err
 	}
 
-	return newProcess, nil
+	// Ensure process runs correctly
+
+	return nil
 }
 
-func buildApp(logger *clilogger.CLILogger, outputType string, ldflags string, compilerCommand string) (string, error) {
+//func restartApp(logger *clilogger.CLILogger, outputType string, ldflags string, compilerCommand string, debugBinaryProcess *process.Process) (*process.Process, error) {
+//
+//	appBinary, err := buildApp(logger, outputType, ldflags, compilerCommand)
+//	println()
+//	if err != nil {
+//		logger.Fatal(err.Error())
+//		return nil, errors.Wrap(err, "Build Failed:")
+//	}
+//	logger.Println("Build new binary: %s", appBinary)
+//
+//	// Kill existing binary if need be
+//	if debugBinaryProcess != nil {
+//		killError := debugBinaryProcess.Kill()
+//
+//		if killError != nil {
+//			logger.Fatal("Unable to kill debug binary (PID: %d)!", debugBinaryProcess.PID())
+//		}
+//
+//		debugBinaryProcess = nil
+//	}
+//
+//	// TODO: Generate `backend.js`
+//
+//	// Start up new binary
+//	newProcess := process.NewProcess(logger, appBinary)
+//	err = newProcess.Start()
+//	if err != nil {
+//		// Remove binary
+//		deleteError := fs.DeleteFile(appBinary)
+//		if deleteError != nil {
+//			logger.Fatal("Unable to delete app binary: " + appBinary)
+//		}
+//		logger.Fatal("Unable to start application: %s", err.Error())
+//	}
+//
+//	// Check if port is open
+//	timeout := time.Second
+//	conn, err := net.DialTimeout("tcp", net.JoinHostPort("host", port), timeout)
+//	if err != nil {
+//		return
+//	}
+//	newProcess.Running
+//	return newProcess, nil
+//}
+
+// buildapp attempts to compile the application
+// It returns the path to the new binary or an error
+func (r *Reloader) buildApp() (string, error) {
 
 	// Create random output file
 	outputFile := fmt.Sprintf("debug-%d", time.Now().Unix())
 
 	// Create BuildOptions
 	buildOptions := &build.Options{
-		Logger:         logger,
-		OutputType:     outputType,
+		Logger:         r.logger,
+		OutputType:     "dev",
 		Mode:           build.Debug,
 		Pack:           false,
 		Platform:       runtime.GOOS,
-		LDFlags:        ldflags,
-		Compiler:       compilerCommand,
+		LDFlags:        r.ldflags,
+		Compiler:       r.compiler,
 		OutputFile:     outputFile,
 		IgnoreFrontend: true,
 	}

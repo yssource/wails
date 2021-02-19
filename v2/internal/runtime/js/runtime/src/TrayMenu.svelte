@@ -4,7 +4,7 @@
 
     export let tray = null;
 
-    $: hidden = $selectedMenu !== tray;
+    $: visible = $selectedMenu === tray;
 
     function closeMenu() {
         selectedMenu.set(null);
@@ -23,6 +23,7 @@
 
         const handleClick = event => {
             if (node && !node.contains(event.target) && !event.defaultPrevented) {
+                console.log("click outside of node")
                 node.dispatchEvent(
                     new CustomEvent('click_outside', node)
                 )
@@ -45,7 +46,7 @@
     <!--{/if}-->
     <span class="label" on:click={trayClicked}>{tray.Label}</span>
     {#if tray.ProcessedMenu }
-        <Menu menu="{tray.ProcessedMenu}" {hidden}/>
+        <Menu menu="{tray.ProcessedMenu}" visible="{visible}"/>
     {/if}
 </span>
 

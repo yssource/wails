@@ -2,19 +2,29 @@
 
     export let menu;
 
-    export let hidden = true;
+    console.log({menu})
+
+    export let visible = false;
+
+    function click(id) {
+        console.log("MenuItem", id, "pressed")
+    }
 </script>
 
-{#if !hidden}
+{#if visible}
 <div class="menu">
     {#if menu.Menu }
         {#each menu.Menu.Items as menuItem}
-            <div class="menuitem">
+            {#if menuItem.Type === "Text" }
+            <div class="menuitem" on:click={() => click(menuItem.ID)}>
             {#if menuItem.Image }
                 <div><img alt="" src="data:image/png;base64,{menuItem.Image}"/></div>
             {/if}
-            <div class="menulabel">{menuItem.Label}</div>
+                <div class="menulabel">{menuItem.Label}</div>
             </div>
+            {:else if menuItem.Type === "Separator"}
+            <div class="separator"><hr/></div>
+            {/if}
         {/each}
     {/if}
 </div>
@@ -23,7 +33,7 @@
 <style>
 
     .menu {
-        padding: 3px;
+        padding: 5px;
         background-color: #0008;
         color: #EEF;
         border-radius: 5px;
@@ -32,7 +42,6 @@
         backdrop-filter: blur(3px) saturate(160%) contrast(45%) brightness(140%);
         border: 1px solid rgb(88,88,88);
         box-shadow: 0 0 1px rgb(146,146,148) inset;
-
     }
 
     .menuitem {
@@ -51,6 +60,15 @@
 
     .menuitem img {
         padding-right: 5px;
+    }
+
+    .separator {
+        padding-top: 5px;
+        width: 100%;
+        padding-bottom: 5px;
+    }
+    .separator:hover {
+        background-color: #0000;
     }
 
 </style>

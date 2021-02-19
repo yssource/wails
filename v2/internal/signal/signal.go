@@ -80,4 +80,5 @@ func (m *Manager) Start() {
 		m.logger.Trace("Shutdown")
 		m.wg.Done()
 	}()
+
 }
