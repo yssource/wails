@@ -2,7 +2,6 @@ package wails
 
 import (
 	"os"
-	"runtime"
 	"syscall"
 
 	"github.com/syossan27/tebata"
@@ -13,12 +12,23 @@ import (
 	"github.com/wailsapp/wails/lib/ipc"
 	"github.com/wailsapp/wails/lib/logger"
 	"github.com/wailsapp/wails/lib/renderer"
+	wailsruntime "github.com/wailsapp/wails/runtime"
 )
 
 // -------------------------------- Compile time Flags ------------------------------
 
 // BuildMode indicates what mode we are in
 var BuildMode = cmd.BuildModeProd
+
+// Runtime is the Go Runtime struct
+type Runtime = wailsruntime.Runtime
+
+// Store is a state store used for syncing with
+// the front end
+type Store = wailsruntime.Store
+
+// CustomLogger is a specialised logger
+type CustomLogger = logger.CustomLogger
 
 // ----------------------------------------------------------------------------------
 
@@ -106,11 +116,6 @@ func (a *App) start() error {
 		return err
 	}
 
-	// Enable console for Windows debug builds
-	if runtime.GOOS == "windows" && BuildMode == cmd.BuildModeDebug {
-		a.renderer.EnableConsole()
-	}
-
 	// Start signal handler
 	t := tebata.New(os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGINT, syscall.SIGKILL)
 	t.Reserve(func() {
@@ -125,7 +130,7 @@ func (a *App) start() error {
 	a.ipc.Start(a.eventManager, a.bindingManager)
 
 	// Create the runtime
-	a.runtime = NewRuntime(a.eventManager, a.renderer)
+	a.runtime = wailsruntime.NewRuntime(a.eventManager, a.renderer)
 
 	// Start binding manager and give it our renderer
 	err = a.bindingManager.Start(a.renderer, a.runtime)

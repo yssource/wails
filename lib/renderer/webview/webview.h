@@ -364,6 +364,7 @@ struct webview_priv
           webkit_web_view_get_settings(WEBKIT_WEB_VIEW(w->priv.webview));
       webkit_settings_set_enable_write_console_messages_to_stdout(settings, true);
       webkit_settings_set_enable_developer_extras(settings, true);
+      webkit_settings_set_hardware_acceleration_policy(settings, WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS);
     }
     else
     {
@@ -1430,6 +1431,13 @@ struct webview_priv
     {
       style = WS_OVERLAPPED | WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU;
     }
+
+    // Scale
+    // Credit: https://github.com/webview/webview/issues/54#issuecomment-379528243
+    HDC hDC = GetDC(NULL);
+    w->width = GetDeviceCaps(hDC, 88)*w->width/96.0;
+    w->height = GetDeviceCaps(hDC, 90)*w->height/96.0;
+    ReleaseDC(NULL, hDC);
 
     rect.left = 0;
     rect.top = 0;

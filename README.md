@@ -12,7 +12,6 @@
    <a href="https://houndci.com"><img src="https://img.shields.io/badge/Reviewed_by-Hound-8E64B0.svg"/></a>
    <a href="https://github.com/avelino/awesome-go" rel="nofollow"><img src="https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg" alt="Awesome"></a>
    <a href="https://github.com/wailsapp/wails/workflows/release/badge.svg?branch=master" rel="nofollow"><img src="https://github.com/wailsapp/wails/workflows/release/badge.svg?branch=master" alt="Release Pipelines"></a>
-   <a href="https://github.com/wailsapp/wails/workflows/latest-pre/badge.svg?branch=masterr" rel="nofollow"><img src="https://github.com/wailsapp/wails/workflows/latest-pre/badge.svg?branch=master" alt="Pre-Release Pipelines"></a>
 </p>
 
 The traditional method of providing web interfaces to Go programs is via a built-in web server. Wails offers a different approach: it provides the ability to wrap both Go code and a web frontend into a single binary. Tools are provided to make this easy for you by handling project creation, compilation and bundling. All you have to do is get creative!
@@ -57,7 +56,7 @@ _Ubuntu: 16.04, 18.04, 19.04_
 
 _Also succesfully tested on: Zorin 15, Parrot 4.7, Linuxmint 19, Elementary 5, Kali, Neon_, Pop!_OS
 
-#### Arch Linux / ArchLabs
+#### Arch Linux / ArchLabs / Ctlos Linux
 
 `sudo pacman -S webkit2gtk gtk3`
 
@@ -148,7 +147,12 @@ This project was mainly coded to the following albums:
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fwailsapp%2Fwails.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fwailsapp%2Fwails?ref=badge_large)
 
-## Special Thank You
+## Special Thanks
+
+<p align="center" style="text-align: center">
+   A *huge* thanks to <a href="https://pace.dev"><img src="pace.jpeg"/> Pace</a> for sponsoring the project and helping the efforts to get Wails ported to Apple Silicon!<br/><br/>
+   If you are looking for a Project Management tool that's powerful but quick and easy to use, check them out!<br/><br/>
+</p>
 
 <p align="center" style="text-align: center">
    A special thank you to JetBrains for donating licenses to us!<br/><br/>
