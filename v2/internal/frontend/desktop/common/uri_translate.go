@@ -8,7 +8,7 @@ func TranslateUriToFile(uri string, expectedScheme string, expectedHost string) 
 		return "", false, err
 	}
 
-	if url.Scheme != expectedScheme || url.Host != expectedHost {
+	if url.Scheme != expectedScheme || (len(expectedHost) > 0 && url.Host != expectedHost) {
 		return "", false, nil
 	}
 
